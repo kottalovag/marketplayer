@@ -29,15 +29,57 @@ struct IndexNumber
     unsigned int operator()() {return actual++;}
 };
 
+typedef double Amount_t;
+
 struct Utility
 {
+    double alfa1, alfa2;
+    Amount_t compute(Amount_t q1, Amount_t q2) const {
+        return pow(q1, alfa1)*pow(q2, alfa2);
+    }
+    Amount_t computeQ1(Amount_t q2, Amount_t product) const {
+        return computeOther(q2, alfa2, alfa1, product);
+    }
+    Amount_t computeQ2(Amount_t q1, Amount_t product) const {
+        return computeOther(q1, alfa1, alfa2, product);
+    }
+private:
+    static Amount_t computeOther(Amount_t qGiven, double alfaGiven, double alfaSubject, Amount_t product) {
+        auto qSubject_alfaSubject = product/pow(qGiven,alfaGiven);
+        return pow(qSubject_alfaSubject, 1.0/alfaSubject);
+    }
+};
 
+struct IndifferenceCurve
+{
+    Utility utility;
+    Amount_t q1, q2;
+    typedef tuple<vector<Amount_t>, vector<Amount_t>> DataPair;
 
+    DataPair computeCurve(Amount_t rangeStart, Amount_t rangeFinish, Amount_t resolution) const{
+        auto const product = utility.compute(q1,q2);
+        vector<Amount_t> q1Points, q2Points;
+        for (auto loopQ1 = rangeStart; loopQ1 <= rangeFinish; loopQ1 += resolution) {
+            q1Points.push_back(loopQ1);
+            q2Points.push_back(utility.computeQ2(loopQ1, product));
+        }
+        return make_tuple(q1Points, q2Points);
+    }
+
+    static void flipCurve(DataPair& curve, Amount_t q1Sum, Amount_t q2Sum) {
+        auto& q1Points = std::get<0>(curve);
+        auto& q2Points = std::get<1>(curve);
+        Q_ASSERT(q1Points.size() == q2Points.size());
+        for (size_t i = 0; i < q1Points.size(); ++i) {
+            q1Points[i] = q1Sum - q1Points[i];
+            q2Points[i] = q2Sum - q2Points[i];
+        }
+    }
 };
 
 struct Simulation
 {
-    typedef int32_t Amount_t;
+    Utility mUtility;
     vector<vector<Amount_t>> mResources;
     vector<size_t> mPermutation;
     size_t mNumActors;
@@ -97,7 +139,7 @@ struct Simulation
         resources[0] = amountAtBorder;
     }
 
-    static void setupResources(vector<Amount_t>& resources, Amount_t const sumAmount, size_t numActors) {
+    static void setupResourcesReal(vector<Amount_t>& resources, Amount_t const sumAmount, size_t numActors) {
         resources.reserve(numActors);
         resources.resize(0);
         unordered_map<Amount_t, bool> isPinPointUsed;
@@ -124,7 +166,7 @@ struct Simulation
         resources[0] = amountAtBorder;
     }
 
-    bool setup(size_t numActors, unsigned amountQ1, unsigned amountQ2)
+    bool setup(size_t numActors, unsigned amountQ1, unsigned amountQ2, double alfa1, double alfa2)
     {
         if (numActors%2 != 0) return false;
         mAmounts.resize(0);
@@ -132,6 +174,8 @@ struct Simulation
         mAmounts.push_back(amountQ2);
         mResources.resize(mAmounts.size());
         mNumActors = numActors;
+        mUtility.alfa1 = alfa1;
+        mUtility.alfa2 = alfa2;
         setupPermutation();
         for (size_t idx = 0; idx < mAmounts.size(); ++idx) {
             setupResourcesInt(mResources[idx], mAmounts[idx], numActors);
@@ -143,10 +187,6 @@ struct Simulation
     tuple<Amount_t, Amount_t> proposeTrade(size_t proposerActorIdx, size_t targetActorIdx) {
 
         Amount_t tradedQ1, tradedQ2;
-
-
-
-
     }
 
     void nextRound()
@@ -173,7 +213,7 @@ MainWindow::MainWindow(QWidget *parent) :
     urng.seed(std::time(0));
     ui->setupUi(this);
     Simulation simulation;
-    simulation.setup(10, 1000, 800);
+    simulation.setup(10, 1000, 800, 0.5, 0.5);
     simulation.printResources(0);
     simulation.printResources(1);
 }
