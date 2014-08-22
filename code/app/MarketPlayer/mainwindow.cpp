@@ -5,6 +5,7 @@
 #include <random>
 #include <algorithm>
 #include <numeric>
+#include <functional>
 
 #include <iostream>
 
@@ -43,25 +44,6 @@ struct IndexNumber
 
 typedef double Amount_t;
 
-struct Utility
-{
-    double alfa1, alfa2;
-    Amount_t compute(Amount_t q1, Amount_t q2) const {
-        return pow(q1, alfa1)*pow(q2, alfa2);
-    }
-    Amount_t computeQ1(Amount_t q2, Amount_t product) const {
-        return computeOther(q2, alfa2, alfa1, product);
-    }
-    Amount_t computeQ2(Amount_t q1, Amount_t product) const {
-        return computeOther(q1, alfa1, alfa2, product);
-    }
-private:
-    static Amount_t computeOther(Amount_t qGiven, double alfaGiven, double alfaSubject, Amount_t product) {
-        auto qSubject_alfaSubject = product/pow(qGiven,alfaGiven);
-        return pow(qSubject_alfaSubject, 1.0/alfaSubject);
-    }
-};
-
 template<typename T>
 struct DataPair
 {
@@ -75,37 +57,33 @@ struct DataPair
 
 typedef DataPair<Amount_t> ResourceDataPair;
 
+struct Utility
+{
+    double alfa1, alfa2;
+    Amount_t compute(Amount_t q1, Amount_t q2) const {
+        return pow(q1, alfa1)*pow(q2, alfa2);
+    }
+};
+
 struct IndifferenceCurve
 {
+    Utility utility;
+    Amount_t fixQ1, fixQ2;
+
     IndifferenceCurve(Utility utility, Amount_t q1, Amount_t q2)
-        : mUtility(utility)
-        , mQ1(q1)
-        , mQ2(q2)
+        : utility(utility)
+        , fixQ1(q1)
+        , fixQ2(q2)
     {}
 
-    Utility mUtility;
-    Amount_t mQ1, mQ2;
-
-    ResourceDataPair computeCurve(Amount_t rangeStart, Amount_t rangeFinish, Amount_t resolution) const {
-        auto const product = mUtility.compute(mQ1,mQ2);
-        ResourceDataPair dataPair;
-        for (auto loopQ1 = rangeStart; loopQ1 <= rangeFinish; loopQ1 += resolution) {
-            dataPair.push(loopQ1, mUtility.computeQ2(loopQ1, product));
-        }
-        return dataPair;
-    }
-
-    ResourceDataPair getPoint() const {
+    ResourceDataPair getFixPoint() const {
         ResourceDataPair result;
-        result.push(mQ1, mQ2);
+        result.push(fixQ1, fixQ2);
         return result;
     }
 
-    static void flipCurve(ResourceDataPair& curve, Amount_t q1Sum, Amount_t q2Sum) {
-        for (vector<Amount_t>::size_type i = 0; i < curve.size(); ++i) {
-            curve.x[i] = q1Sum - curve.x[i];
-            curve.y[i] = q2Sum - curve.y[i];
-        }
+    Amount_t getQ2(Amount_t q1) const {
+        return fixQ2 * pow(fixQ1/q1, utility.alfa1/utility.alfa2);
     }
 };
 
@@ -136,6 +114,38 @@ struct Simulation
             : q1(simulation.mResources[0][idx])
             , q2(simulation.mResources[1][idx])
         {}
+    };
+
+    struct EdgeworthSituation {
+        ActorRef actor1, actor2;
+        IndifferenceCurve curve1, curve2;
+        Amount_t const q1Sum, q2Sum;
+        EdgeworthSituation(Simulation& simulation, size_t const actor1Idx, size_t const actor2Idx)
+            : actor1(simulation, actor1Idx)
+            , actor2(simulation, actor2Idx)
+            , curve1(simulation.mUtility, actor1.q1, actor1.q2)
+            , curve2(simulation.mUtility, actor2.q1, actor2.q2)
+            , q1Sum(actor1.q1 + actor2.q1)
+            , q2Sum(actor1.q2 + actor2.q2)
+        {
+        }
+
+        std::function<Amount_t(Amount_t)> getCurve1Function() const {
+            return [this](double q1){ return curve1.getQ2(q1); };
+        }
+
+        std::function<Amount_t(Amount_t)> getCurve2Function() const {
+            return [this](double q1){ return q2Sum - curve2.getQ2(q1Sum - q1); };
+        }
+
+        std::function<Amount_t(Amount_t)> getParetoSetFunction() const {
+            return [this](double q1){ return q1 * q2Sum/q1Sum; };
+        }
+
+        ResourceDataPair getFixPoint() const {
+            return curve1.getFixPoint();
+        }
+
     };
 
     Utility mUtility;
@@ -215,60 +225,48 @@ struct Simulation
         return true;
     }
 
-    tuple<Amount_t, Amount_t> proposeTrade(size_t proposerActorIdx, size_t targetActorIdx) {
-        Amount_t tradedQ1, tradedQ2;
-        return make_tuple(tradedQ1, tradedQ2);
-    }
-
     void nextRound() {
         shufflePermutation();
         for (size_t idx = 0; idx < mNumActors; idx += 2) {
-            auto const oneActorIdx = mPermutation[idx];
-            auto const otherActorIdx = mPermutation[idx+1];
-            //trade(oneActorIdx, otherActorIdx);
+            EdgeworthSituation situation(*this, mPermutation[idx], mPermutation[idx+1]);
         }
     }
 
-    void plotEdgeWorth(QCustomPlot* plot, size_t actorIdx1, size_t actorIdx2) const {
+    ResourceDataPair sampleFunction(std::function<double(double)> func, Amount_t rangeStart, Amount_t rangeFinish, Amount_t resolution) const {
+        ResourceDataPair dataPair;
+        for (auto x = rangeStart; x <= rangeFinish; x += resolution) {
+            dataPair.push(x, func(x));
+        }
+        return dataPair;
+    }
+
+    void plotEdgeworth(QCustomPlot* plot, EdgeworthSituation const& situation) const {
         while (plot->graphCount() < 4) {
             plot->addGraph();
         }
-        ActorConstRef actor1(*this, actorIdx1);
-        ActorConstRef actor2(*this, actorIdx2);
-        IndifferenceCurve curve1(mUtility, actor1.q1, actor1.q2);
-        IndifferenceCurve curve2(mUtility, actor2.q1, actor2.q2);
+        Amount_t const q1RangeStart = std::numeric_limits<Amount_t>::epsilon();
+        Amount_t const q1Resolution = 0.1;
 
-        Amount_t const q1Sum = actor1.q1 + actor2.q1;
-        Amount_t const q2Sum = actor1.q2 + actor2.q2;
-        Amount_t const resolution = 0.1;
-        Amount_t const computationStart = std::numeric_limits<Amount_t>::epsilon();
+        plot->xAxis->setRange(0.0, situation.q1Sum);
+        plot->yAxis->setRange(0.0, situation.q2Sum);
 
-        plot->xAxis->setRange(0.0, q1Sum);
-        plot->yAxis->setRange(0.0, q2Sum);
-
-        ResourceDataPair data1 = curve1.computeCurve(computationStart, q1Sum, resolution);
+        ResourceDataPair data1 = sampleFunction(situation.getCurve1Function(), q1RangeStart, situation.q1Sum, q1Resolution);
         plot->graph(0)->setData(data1.x, data1.y);
 
-        ResourceDataPair data2 = curve2.computeCurve(computationStart, q1Sum, resolution);
-        IndifferenceCurve::flipCurve(data2, q1Sum, q2Sum);
+        ResourceDataPair data2 = sampleFunction(situation.getCurve2Function(), q1RangeStart, situation.q1Sum, q1Resolution);
         plot->graph(1)->setData(data2.x, data2.y);
 
         auto edgeworthPoint = plot->graph(2);
         edgeworthPoint->setScatterStyle(QCPScatterStyle(QCPScatterStyle::ssCross));
-
         edgeworthPoint->setPen(QPen(Qt::red));
-        auto point1 = curve1.getPoint();
-        edgeworthPoint->setData(point1.x, point1.y);
+        auto fixPoint = situation.getFixPoint();
+        edgeworthPoint->setData(fixPoint.x, fixPoint.y);
 
         auto paretoSet = plot->graph(3);
         paretoSet->setPen(QPen(Qt::green));
-        ResourceDataPair paretoData;
-        paretoData.push(0,0);
-        paretoData.push(q1Sum, q2Sum);
+        ResourceDataPair paretoData = sampleFunction(situation.getParetoSetFunction(), q1RangeStart, situation.q1Sum, q1Resolution);
         paretoSet->setData(paretoData.x, paretoData.y);
     }
-
-
 };
 
 MainWindow::MainWindow(QWidget *parent) :
@@ -281,7 +279,8 @@ MainWindow::MainWindow(QWidget *parent) :
     simulation.setup(10, 1000, 800, 0.5, 0.5);
     simulation.printResources(0);
     simulation.printResources(1);
-    simulation.plotEdgeWorth(ui->edgeworthBoxPlot, 0, 1);
+    Simulation::EdgeworthSituation situation(simulation, 0, 1);
+    simulation.plotEdgeworth(ui->edgeworthBoxPlot, situation);
 }
 
 MainWindow::~MainWindow()
