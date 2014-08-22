@@ -13,12 +13,24 @@
 #include <tuple>
 #include <list>
 
-#include "qcustomplot.h"
+#include <QVector>
 
-using namespace std;
+#include "qcustomplot.h"
 
 typedef std::mt19937 URNG;
 URNG urng;
+
+using std::tuple;
+using std::make_tuple;
+
+using std::cout;
+using std::endl;
+
+template<typename E>
+//using vector = std::vector<E>;
+using vector = QVector<E>;
+
+struct Simulation;
 
 struct IndexNumber
 {
@@ -50,35 +62,82 @@ private:
     }
 };
 
+template<typename T>
+struct DataPair
+{
+    vector<T> x, y;
+    typename vector<T>::size_type size() const { return x.size(); }
+    void push(T const& x, T const& y) {
+        this->x.push_back(x);
+        this->y.push_back(y);
+    }
+};
+
+typedef DataPair<Amount_t> ResourceDataPair;
+
 struct IndifferenceCurve
 {
-    Utility utility;
-    Amount_t q1, q2;
-    typedef tuple<vector<Amount_t>, vector<Amount_t>> DataPair;
+    IndifferenceCurve(Utility utility, Amount_t q1, Amount_t q2)
+        : mUtility(utility)
+        , mQ1(q1)
+        , mQ2(q2)
+    {}
 
-    DataPair computeCurve(Amount_t rangeStart, Amount_t rangeFinish, Amount_t resolution) const{
-        auto const product = utility.compute(q1,q2);
-        vector<Amount_t> q1Points, q2Points;
+    Utility mUtility;
+    Amount_t mQ1, mQ2;
+
+    ResourceDataPair computeCurve(Amount_t rangeStart, Amount_t rangeFinish, Amount_t resolution) const {
+        auto const product = mUtility.compute(mQ1,mQ2);
+        ResourceDataPair dataPair;
         for (auto loopQ1 = rangeStart; loopQ1 <= rangeFinish; loopQ1 += resolution) {
-            q1Points.push_back(loopQ1);
-            q2Points.push_back(utility.computeQ2(loopQ1, product));
+            dataPair.push(loopQ1, mUtility.computeQ2(loopQ1, product));
         }
-        return make_tuple(q1Points, q2Points);
+        return dataPair;
     }
 
-    static void flipCurve(DataPair& curve, Amount_t q1Sum, Amount_t q2Sum) {
-        auto& q1Points = std::get<0>(curve);
-        auto& q2Points = std::get<1>(curve);
-        Q_ASSERT(q1Points.size() == q2Points.size());
-        for (size_t i = 0; i < q1Points.size(); ++i) {
-            q1Points[i] = q1Sum - q1Points[i];
-            q2Points[i] = q2Sum - q2Points[i];
+    ResourceDataPair getPoint() const {
+        ResourceDataPair result;
+        result.push(mQ1, mQ2);
+        return result;
+    }
+
+    static void flipCurve(ResourceDataPair& curve, Amount_t q1Sum, Amount_t q2Sum) {
+        for (vector<Amount_t>::size_type i = 0; i < curve.size(); ++i) {
+            curve.x[i] = q1Sum - curve.x[i];
+            curve.y[i] = q2Sum - curve.y[i];
         }
     }
 };
 
+struct ResourceToleranceEquality
+{
+    bool operator()(Amount_t const& x, Amount_t const& y) const {
+        return fabs(x-y) < std::numeric_limits<Amount_t>::epsilon();
+    }
+};
+
+typedef std::unordered_map<Amount_t, bool, std::hash<Amount_t>, ResourceToleranceEquality> PinPointMap;
+
 struct Simulation
 {
+    struct ActorConstRef {
+        Amount_t const& q1;
+        Amount_t const& q2;
+        ActorConstRef(Simulation const& simulation, size_t const idx)
+            : q1(simulation.mResources[0][idx])
+            , q2(simulation.mResources[1][idx])
+        {}
+    };
+
+    struct ActorRef {
+        Amount_t& q1;
+        Amount_t& q2;
+        ActorRef(Simulation& simulation, size_t const idx)
+            : q1(simulation.mResources[0][idx])
+            , q2(simulation.mResources[1][idx])
+        {}
+    };
+
     Utility mUtility;
     vector<vector<Amount_t>> mResources;
     vector<size_t> mPermutation;
@@ -87,18 +146,19 @@ struct Simulation
 
     void setupPermutation() {
         mPermutation.resize(mNumActors);
-        generate(mPermutation.begin(), mPermutation.end(), IndexNumber());
+        std::generate(mPermutation.begin(), mPermutation.end(), IndexNumber());
     }
 
     void shufflePermutation() {
-        shuffle(mPermutation.begin(), mPermutation.end(), urng);
+        std::shuffle(mPermutation.begin(), mPermutation.end(), urng);
     }
 
     bool checkResources(size_t resourceIdx) {
         auto const& res = mResources[resourceIdx];
         Amount_t const sum = std::accumulate(res.begin(), res.end(), 0.0);
-        return sum == mAmounts[resourceIdx];
-        //return fabs(sum - mAmounts[resourceIdx]) < numeric_limits<Amount_t>::epsilon();
+        cout << "asserted sum: " << sum << " actual sum: " << mAmounts[resourceIdx] << endl;
+        //return sum <= mAmounts[resourceIdx];
+        return fabs(sum - mAmounts[resourceIdx]) < std::numeric_limits<Amount_t>::epsilon() * mNumActors;
     }
 
     void printResources(size_t resourceIdx) {
@@ -111,23 +171,22 @@ struct Simulation
         cout << "sum: " << sum << endl;
     }
 
-    static void setupResourcesInt(vector<Amount_t>& resources, Amount_t const sumAmount, size_t numActors) {
-        Q_ASSERT(numActors <= sumAmount);
+    static void setupResources(vector<Amount_t>& resources, Amount_t const sumAmount, size_t const numActors) {
         resources.reserve(numActors);
         resources.resize(0);
-        unordered_map<Amount_t, bool> isPinPointUsed;
+        PinPointMap isPinPointUsed;
         vector<Amount_t>& pinPoints = resources; //alias for readability
-        for (Amount_t upperBound = sumAmount - numActors; upperBound < sumAmount; ++upperBound) {
-            std::uniform_int_distribution<Amount_t> uniformDistribution(0, upperBound);
+        std::uniform_real_distribution<Amount_t> uniformDistribution(0.0, sumAmount);
+        size_t repetitions = 0;
+        while (pinPoints.size() < numActors) {
             Amount_t pinPoint = uniformDistribution(urng);
-            if (isPinPointUsed[pinPoint]) {
-                pinPoint = upperBound;
-            }
-            isPinPointUsed[pinPoint] = true;
-            pinPoints.push_back(pinPoint);
+            if (!isPinPointUsed[pinPoint]) {
+                isPinPointUsed[pinPoint] = true;
+                pinPoints.push_back(pinPoint);
+            } else ++repetitions;
         }
+        cout << "random repetitions: " << repetitions << endl;
         std::sort(pinPoints.begin(), pinPoints.end());
-        Q_ASSERT(numActors == pinPoints.size());
 
         //resources and pinPoints is the same container
         //the alias was used for sake of clarity
@@ -139,35 +198,7 @@ struct Simulation
         resources[0] = amountAtBorder;
     }
 
-    static void setupResourcesReal(vector<Amount_t>& resources, Amount_t const sumAmount, size_t numActors) {
-        resources.reserve(numActors);
-        resources.resize(0);
-        unordered_map<Amount_t, bool> isPinPointUsed;
-        vector<Amount_t>& pinPoints = resources; //alias for readability
-        for (Amount_t upperBound = sumAmount - numActors; upperBound < sumAmount; ++upperBound) {
-            std::uniform_int_distribution<Amount_t> uniformDistribution(0, upperBound);
-            Amount_t pinPoint = uniformDistribution(urng);
-            if (isPinPointUsed[pinPoint]) {
-                pinPoint = upperBound;
-            }
-            isPinPointUsed[pinPoint] = true;
-            pinPoints.push_back(pinPoint);
-        }
-        std::sort(pinPoints.begin(), pinPoints.end());
-        Q_ASSERT(numActors == pinPoints.size());
-
-        //resources and pinPoints is the same container
-        //the alias was used for sake of clarity
-        //we have to be careful about the order
-        Amount_t const amountAtBorder = pinPoints[0] + (sumAmount - pinPoints.back());
-        for (size_t actorIdx = numActors-1; actorIdx > 0; --actorIdx) {
-            resources[actorIdx] = pinPoints[actorIdx] - pinPoints[actorIdx-1];
-        }
-        resources[0] = amountAtBorder;
-    }
-
-    bool setup(size_t numActors, unsigned amountQ1, unsigned amountQ2, double alfa1, double alfa2)
-    {
+    bool setup(size_t numActors, unsigned amountQ1, unsigned amountQ2, double alfa1, double alfa2) {
         if (numActors%2 != 0) return false;
         mAmounts.resize(0);
         mAmounts.push_back(amountQ1);
@@ -178,19 +209,18 @@ struct Simulation
         mUtility.alfa2 = alfa2;
         setupPermutation();
         for (size_t idx = 0; idx < mAmounts.size(); ++idx) {
-            setupResourcesInt(mResources[idx], mAmounts[idx], numActors);
-            Q_ASSERT(checkResources(idx));
+            setupResources(mResources[idx], mAmounts[idx], numActors);
+            //Q_ASSERT(checkResources(idx));
         }
         return true;
     }
 
     tuple<Amount_t, Amount_t> proposeTrade(size_t proposerActorIdx, size_t targetActorIdx) {
-
         Amount_t tradedQ1, tradedQ2;
+        return make_tuple(tradedQ1, tradedQ2);
     }
 
-    void nextRound()
-    {
+    void nextRound() {
         shufflePermutation();
         for (size_t idx = 0; idx < mNumActors; idx += 2) {
             auto const oneActorIdx = mPermutation[idx];
@@ -199,11 +229,46 @@ struct Simulation
         }
     }
 
-    void plotEdgeWorth(QCustomPlot* plot, size_t actorIdx1, size_t actorIdx2)
-    {
+    void plotEdgeWorth(QCustomPlot* plot, size_t actorIdx1, size_t actorIdx2) const {
+        while (plot->graphCount() < 4) {
+            plot->addGraph();
+        }
+        ActorConstRef actor1(*this, actorIdx1);
+        ActorConstRef actor2(*this, actorIdx2);
+        IndifferenceCurve curve1(mUtility, actor1.q1, actor1.q2);
+        IndifferenceCurve curve2(mUtility, actor2.q1, actor2.q2);
 
+        Amount_t const q1Sum = actor1.q1 + actor2.q1;
+        Amount_t const q2Sum = actor1.q2 + actor2.q2;
+        Amount_t const resolution = 0.1;
+        Amount_t const computationStart = std::numeric_limits<Amount_t>::epsilon();
 
+        plot->xAxis->setRange(0.0, q1Sum);
+        plot->yAxis->setRange(0.0, q2Sum);
+
+        ResourceDataPair data1 = curve1.computeCurve(computationStart, q1Sum, resolution);
+        plot->graph(0)->setData(data1.x, data1.y);
+
+        ResourceDataPair data2 = curve2.computeCurve(computationStart, q1Sum, resolution);
+        IndifferenceCurve::flipCurve(data2, q1Sum, q2Sum);
+        plot->graph(1)->setData(data2.x, data2.y);
+
+        auto edgeworthPoint = plot->graph(2);
+        edgeworthPoint->setScatterStyle(QCPScatterStyle(QCPScatterStyle::ssCross));
+
+        edgeworthPoint->setPen(QPen(Qt::red));
+        auto point1 = curve1.getPoint();
+        edgeworthPoint->setData(point1.x, point1.y);
+
+        auto paretoSet = plot->graph(3);
+        paretoSet->setPen(QPen(Qt::green));
+        ResourceDataPair paretoData;
+        paretoData.push(0,0);
+        paretoData.push(q1Sum, q2Sum);
+        paretoSet->setData(paretoData.x, paretoData.y);
     }
+
+
 };
 
 MainWindow::MainWindow(QWidget *parent) :
@@ -216,6 +281,7 @@ MainWindow::MainWindow(QWidget *parent) :
     simulation.setup(10, 1000, 800, 0.5, 0.5);
     simulation.printResources(0);
     simulation.printResources(1);
+    simulation.plotEdgeWorth(ui->edgeworthBoxPlot, 0, 1);
 }
 
 MainWindow::~MainWindow()
