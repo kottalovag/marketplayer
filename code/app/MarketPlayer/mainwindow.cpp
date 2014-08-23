@@ -138,7 +138,7 @@ struct Simulation
             return [this](double q1){ return q2Sum - curve2.getQ2(q1Sum - q1); };
         }
 
-        //implicit hack
+        //implicit hack: linear contract curve
         std::function<Amount_t(Amount_t)> getParetoSetFunction() const {
             return [this](double q1){ return q1 * q2Sum/q1Sum; };
         }
@@ -151,13 +151,13 @@ struct Simulation
             return calculateParetoIntersection(curve1);
         }
 
-        //implicit hack
+        //implicit hack of linear contract curve
         Amount_t calculateCurve2ParetoIntersection() const {
             return q1Sum - calculateParetoIntersection(curve2);
         }
 
     private:
-        //implicit hack
+        //implicit hack of linear contract-curve
         Amount_t calculateParetoIntersection(IndifferenceCurve const& curve) const {
             double const alfa1 = curve.utility.alfa1;
             double const alfa2 = curve.utility.alfa2;
@@ -277,8 +277,17 @@ struct Simulation
         plot->xAxis->setRange(0.0, situation.q1Sum);
         plot->yAxis->setRange(0.0, situation.q2Sum);
 
+        auto graph1 = plot->graph(0);
         ResourceDataPair data1 = sampleFunction(situation.getCurve1Function(), q1RangeStart, situation.q1Sum, q1Resolution);
-        plot->graph(0)->setData(data1.x, data1.y);
+        //ResourceDataPair data1 = sampleFunction(situation.getCurve1Function(), situation.actor1.q1, situation.q1Sum, q1Resolution);
+        /*auto graph1Brush = graph1->brush();
+        graph1Brush.setStyle(Qt::SolidPattern);
+        QColor fillColor = Qt::blue;
+        fillColor.setAlpha(32);
+        graph1Brush.setColor(fillColor);
+        graph1->setBrush(graph1Brush);
+        graph1->setChannelFillGraph(plot->graph(1));*/
+        graph1->setData(data1.x, data1.y);
 
         ResourceDataPair data2 = sampleFunction(situation.getCurve2Function(), q1RangeStart, situation.q1Sum, q1Resolution);
         plot->graph(1)->setData(data2.x, data2.y);
@@ -314,12 +323,23 @@ MainWindow::MainWindow(QWidget *parent) :
 {
     urng.seed(std::time(0));
     ui->setupUi(this);
+
+    // make left and bottom axes always transfer their ranges to right and top axes:
+    connect(ui->plotEdgeworthBox->xAxis, SIGNAL(rangeChanged(QCPRange)),
+            ui->plotEdgeworthBox->xAxis2, SLOT(setRange(QCPRange)));
+    connect(ui->plotEdgeworthBox->yAxis, SIGNAL(rangeChanged(QCPRange)),
+            ui->plotEdgeworthBox->yAxis2, SLOT(setRange(QCPRange)));
+    ui->plotEdgeworthBox->xAxis2->setVisible(true);
+    ui->plotEdgeworthBox->yAxis2->setVisible(true);
+    ui->plotEdgeworthBox->xAxis2->setRangeReversed(true);
+    ui->plotEdgeworthBox->yAxis2->setRangeReversed(true);
+
     Simulation simulation;
     simulation.setup(10, 1000, 800, 0.5, 0.5);
     simulation.printResources(0);
     simulation.printResources(1);
     Simulation::EdgeworthSituation situation(simulation, 0, 1);
-    simulation.plotEdgeworth(ui->edgeworthBoxPlot, situation);
+    simulation.plotEdgeworth(ui->plotEdgeworthBox, situation);
 }
 
 MainWindow::~MainWindow()
@@ -331,5 +351,5 @@ void MainWindow::on_actionSaveEdgeworthDiagram_triggered()
 {
     auto now = QDateTime::currentDateTime();
     auto fileName = "Edgeworth_" + now.toString("yyyy.MM.dd_hh.mm.ss") + ".png";
-    ui->edgeworthBoxPlot->savePng(fileName);
+    ui->plotEdgeworthBox->savePng(fileName);
 }
