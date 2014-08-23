@@ -12,12 +12,15 @@ greaterThan(QT_MAJOR_VERSION, 4): QT += widgets
 TARGET = MarketPlayer
 TEMPLATE = app
 
+INCLUDEPATH += model
 
 SOURCES += main.cpp\
         mainwindow.cpp \
-    qcustomplot.cpp
+    qcustomplot.cpp \
+    model/model.cpp
 
 HEADERS  += mainwindow.h \
-    qcustomplot.h
+    qcustomplot.h \
+    model/model.h
 
 FORMS    += mainwindow.ui
