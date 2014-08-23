@@ -138,6 +138,7 @@ struct Simulation
             return [this](double q1){ return q2Sum - curve2.getQ2(q1Sum - q1); };
         }
 
+        //implicit hack
         std::function<Amount_t(Amount_t)> getParetoSetFunction() const {
             return [this](double q1){ return q1 * q2Sum/q1Sum; };
         }
@@ -146,6 +147,23 @@ struct Simulation
             return curve1.getFixPoint();
         }
 
+        Amount_t calculateCurve1ParetoIntersection() const {
+            return calculateParetoIntersection(curve1);
+        }
+
+        //implicit hack
+        Amount_t calculateCurve2ParetoIntersection() const {
+            return q1Sum - calculateParetoIntersection(curve2);
+        }
+
+    private:
+        //implicit hack
+        Amount_t calculateParetoIntersection(IndifferenceCurve const& curve) const {
+            double const alfa1 = curve.utility.alfa1;
+            double const alfa2 = curve.utility.alfa2;
+            return pow(q1Sum/q2Sum * curve.fixQ2 * pow(curve.fixQ1, alfa1/alfa2),
+                       alfa2/(alfa1+alfa2));
+        }
     };
 
     Utility mUtility;
@@ -240,8 +258,17 @@ struct Simulation
         return dataPair;
     }
 
+    void addCrossPoint(QCPGraph* graph, QColor color, ResourceDataPair const& point) const {
+        graph->setScatterStyle(QCPScatterStyle(QCPScatterStyle::ssCross));
+        auto pen = graph->pen();
+        pen.setColor(color);
+        pen.setWidth(2);
+        graph->setPen(pen);
+        graph->setData(point.x, point.y);
+    }
+
     void plotEdgeworth(QCustomPlot* plot, EdgeworthSituation const& situation) const {
-        while (plot->graphCount() < 4) {
+        while (plot->graphCount() < 6) {
             plot->addGraph();
         }
         Amount_t const q1RangeStart = std::numeric_limits<Amount_t>::epsilon();
@@ -256,16 +283,28 @@ struct Simulation
         ResourceDataPair data2 = sampleFunction(situation.getCurve2Function(), q1RangeStart, situation.q1Sum, q1Resolution);
         plot->graph(1)->setData(data2.x, data2.y);
 
-        auto edgeworthPoint = plot->graph(2);
-        edgeworthPoint->setScatterStyle(QCPScatterStyle(QCPScatterStyle::ssCross));
-        edgeworthPoint->setPen(QPen(Qt::red));
         auto fixPoint = situation.getFixPoint();
-        edgeworthPoint->setData(fixPoint.x, fixPoint.y);
+        addCrossPoint(plot->graph(2), Qt::red, fixPoint);
 
         auto paretoSet = plot->graph(3);
         paretoSet->setPen(QPen(Qt::green));
-        ResourceDataPair paretoData = sampleFunction(situation.getParetoSetFunction(), q1RangeStart, situation.q1Sum, q1Resolution);
+        ResourceDataPair paretoData = sampleFunction(situation.getParetoSetFunction(),
+                                                     q1RangeStart, situation.q1Sum, q1Resolution);
         paretoSet->setData(paretoData.x, paretoData.y);
+
+        ResourceDataPair paretoPoint1Data;
+        Amount_t const p1_q1 = situation.calculateCurve1ParetoIntersection();
+        Amount_t const p1_q2 = situation.getCurve1Function()(p1_q1);
+        cout << "Pareto1: " << p1_q1 << " ; " << p1_q2 << endl;
+        paretoPoint1Data.push(p1_q1, p1_q2);
+        addCrossPoint(plot->graph(4), Qt::red, paretoPoint1Data);
+
+        ResourceDataPair paretoPoint2Data;
+        Amount_t const p2_q1 = situation.calculateCurve2ParetoIntersection();
+        Amount_t const p2_q2 = situation.getCurve2Function()(p2_q1);
+        cout << "Pareto2: " << p2_q1 << " ; " << p2_q2 << endl;
+        paretoPoint2Data.push(p2_q1, p2_q2);
+        addCrossPoint(plot->graph(5), Qt::red, paretoPoint2Data);
     }
 };
 
@@ -286,4 +325,11 @@ MainWindow::MainWindow(QWidget *parent) :
 MainWindow::~MainWindow()
 {
     delete ui;
+}
+
+void MainWindow::on_actionSaveEdgeworthDiagram_triggered()
+{
+    auto now = QDateTime::currentDateTime();
+    auto fileName = "Edgeworth_" + now.toString("yyyy.MM.dd_hh.mm.ss") + ".png";
+    ui->edgeworthBoxPlot->savePng(fileName);
 }
