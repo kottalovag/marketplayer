@@ -30,12 +30,6 @@ template<typename E>
 //using vector = std::vector<E>;
 using vector = QVector<E>;
 
-template<typename T>
-void DataPair<T>::push(const T& x, const T& y) {
-    this->x.push_back(x);
-    this->y.push_back(y);
-}
-
 
 Amount_t Utility::compute(Amount_t q1, Amount_t q2) const {
     return pow(q1, alfa1)*pow(q2, alfa2);
@@ -132,25 +126,21 @@ void Simulation::printResources(size_t resourceIdx) {
 }
 
 void Simulation::setupResources(vector<Amount_t>& resources, const Amount_t sumAmount, const size_t numActors) {
-    resources.reserve(numActors);
-    resources.resize(0);
     PinPointMap isPinPointUsed;
-    vector<Amount_t>& pinPoints = resources; //alias for readability
+    vector<Amount_t> pinPoints;
+    pinPoints.reserve(numActors);
+
     std::uniform_real_distribution<Amount_t> uniformDistribution(0.0, sumAmount);
-    size_t repetitions = 0;
     while (pinPoints.size() < numActors) {
         Amount_t pinPoint = uniformDistribution(urng);
         if (!isPinPointUsed[pinPoint]) {
             isPinPointUsed[pinPoint] = true;
             pinPoints.push_back(pinPoint);
-        } else ++repetitions;
+        }
     }
-    cout << "random repetitions: " << repetitions << endl;
     std::sort(pinPoints.begin(), pinPoints.end());
 
-    //resources and pinPoints is the same container
-    //the alias was used for sake of clarity
-    //we have to be careful about the order
+    resources.resize(numActors);
     Amount_t const amountAtBorder = pinPoints[0] + (sumAmount - pinPoints.back());
     for (size_t actorIdx = numActors-1; actorIdx > 0; --actorIdx) {
         resources[actorIdx] = pinPoints[actorIdx] - pinPoints[actorIdx-1];
@@ -164,7 +154,7 @@ bool Simulation::setup(size_t numActors, unsigned amountQ1, unsigned amountQ2, d
     amounts.push_back(amountQ1);
     amounts.push_back(amountQ2);
     resources.resize(amounts.size());
-    numActors = numActors;
+    this->numActors = numActors;
     utility.alfa1 = alfa1;
     utility.alfa2 = alfa2;
     setupPermutation();
@@ -190,60 +180,31 @@ ResourceDataPair sampleFunction(std::function<double (double)> func, Amount_t ra
     return dataPair;
 }
 
-void Simulation::addCrossPoint(QCPGraph* graph, QColor color, const ResourceDataPair& point) const {
-    graph->setScatterStyle(QCPScatterStyle(QCPScatterStyle::ssCross));
-    auto pen = graph->pen();
-    pen.setColor(color);
-    pen.setWidth(2);
-    graph->setPen(pen);
-    graph->setData(point.x, point.y);
+vector<Amount_t> Simulation::computeUtilities() const {
+    vector<Amount_t> utilities;
+    for (size_t actorIdx = 0; actorIdx < numActors; ++actorIdx) {
+        ActorConstRef actor(*this, actorIdx);
+        utilities.push_back(utility.compute(actor.q1, actor.q2));
+    }
+    return utilities;
 }
 
-void Simulation::plotEdgeworth(QCustomPlot* plot, const Simulation::EdgeworthSituation& situation) const {
-    while (plot->graphCount() < 6) {
-        plot->addGraph();
+Distribution::Distribution(const vector<Amount_t>& subject, Amount_t resolution)
+    : subject(subject)
+    , resolution(resolution)
+    , max(*std::max_element(subject.begin(), subject.end()))
+    , numBuckets(static_cast<size_t>(ceil(max/resolution)))
+{
+    data.resize(numBuckets);
+
+    //optimization possibility:
+    Amount_t currentBucket = resolution/2;
+    for (size_t idx = 0; idx < numBuckets; ++idx, currentBucket += resolution) {
+        data.x[idx] = currentBucket;
     }
-    Amount_t const q1RangeStart = std::numeric_limits<Amount_t>::epsilon();
-    Amount_t const q1Resolution = 0.1;
 
-    plot->xAxis->setRange(0.0, situation.q1Sum);
-    plot->yAxis->setRange(0.0, situation.q2Sum);
-
-    auto graph1 = plot->graph(0);
-    ResourceDataPair data1 = sampleFunction(situation.getCurve1Function(), q1RangeStart, situation.q1Sum, q1Resolution);
-    //ResourceDataPair data1 = sampleFunction(situation.getCurve1Function(), situation.actor1.q1, situation.q1Sum, q1Resolution);
-    /*auto graph1Brush = graph1->brush();
-        graph1Brush.setStyle(Qt::SolidPattern);
-        QColor fillColor = Qt::blue;
-        fillColor.setAlpha(32);
-        graph1Brush.setColor(fillColor);
-        graph1->setBrush(graph1Brush);
-        graph1->setChannelFillGraph(plot->graph(1));*/
-    graph1->setData(data1.x, data1.y);
-
-    ResourceDataPair data2 = sampleFunction(situation.getCurve2Function(), q1RangeStart, situation.q1Sum, q1Resolution);
-    plot->graph(1)->setData(data2.x, data2.y);
-
-    auto fixPoint = situation.getFixPoint();
-    addCrossPoint(plot->graph(2), Qt::red, fixPoint);
-
-    auto paretoSet = plot->graph(3);
-    paretoSet->setPen(QPen(Qt::green));
-    ResourceDataPair paretoData = sampleFunction(situation.getParetoSetFunction(),
-                                                 q1RangeStart, situation.q1Sum, q1Resolution);
-    paretoSet->setData(paretoData.x, paretoData.y);
-
-    ResourceDataPair paretoPoint1Data;
-    Amount_t const p1_q1 = situation.calculateCurve1ParetoIntersection();
-    Amount_t const p1_q2 = situation.getCurve1Function()(p1_q1);
-    cout << "Pareto1: " << p1_q1 << " ; " << p1_q2 << endl;
-    paretoPoint1Data.push(p1_q1, p1_q2);
-    addCrossPoint(plot->graph(4), Qt::red, paretoPoint1Data);
-
-    ResourceDataPair paretoPoint2Data;
-    Amount_t const p2_q1 = situation.calculateCurve2ParetoIntersection();
-    Amount_t const p2_q2 = situation.getCurve2Function()(p2_q1);
-    cout << "Pareto2: " << p2_q1 << " ; " << p2_q2 << endl;
-    paretoPoint2Data.push(p2_q1, p2_q2);
-    addCrossPoint(plot->graph(5), Qt::red, paretoPoint2Data);
+    for (auto const& amount : subject) {
+        auto bucketIdx = static_cast<ResourceDataPair::size_type>(floor(amount/resolution));
+        data.y[bucketIdx] += 1;
+    }
 }

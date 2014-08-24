@@ -1,3 +1,5 @@
+#pragma once
+
 #include "mainwindow.h"
 #include "ui_mainwindow.h"
 
@@ -43,9 +45,19 @@ struct IndexNumber
 template<typename T>
 struct DataPair
 {
-    vector<T> x, y;
-    typename vector<T>::size_type size() const { return x.size(); }
-    void push(T const& x, T const& y);
+    typedef typename vector<T>::size_type size_type;
+    vector<T> x,y;
+    size_type size() const { return x.size(); }
+
+    void push(T const& x, T const& y) {
+        this->x.push_back(x);
+        this->y.push_back(y);
+    }
+
+    void resize(size_type size) {
+        x.resize(size);
+        y.resize(size);
+    }
 };
 
 typedef DataPair<Amount_t> ResourceDataPair;
@@ -128,6 +140,17 @@ struct Simulation
     static void setupResources(vector<Amount_t>& resources, Amount_t const sumAmount, size_t const numActors);
     bool setup(size_t numActors, unsigned amountQ1, unsigned amountQ2, double alfa1, double alfa2);
     void nextRound();
-    void addCrossPoint(QCPGraph* graph, QColor color, ResourceDataPair const& point) const;
-    void plotEdgeworth(QCustomPlot* plot, EdgeworthSituation const& situation) const;
+
+    vector<Amount_t> computeUtilities() const;
+};
+
+struct Distribution {
+    vector<Amount_t> const& subject;
+    Amount_t const resolution;
+    Amount_t const max;
+    size_t const numBuckets;
+
+    ResourceDataPair data;
+
+    Distribution(vector<Amount_t> const& subject, Amount_t resolution);
 };
