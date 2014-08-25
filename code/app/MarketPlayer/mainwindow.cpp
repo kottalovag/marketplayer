@@ -19,20 +19,46 @@ void MainWindow::setupEdgeworthBox()
     plot->xAxis2->setRangeReversed(true);
     plot->yAxis2->setRangeReversed(true);
 
-    while (plot->graphCount() < 4) {
-        plot->addGraph();
-    }
+    //curve1
+    plot->addGraph();
 
+    //curve2
+    plot->addGraph();
+
+    //pareto-set
+    plot->addGraph();
     auto paretoSet = plot->graph(2);
-    paretoSet->setPen(QPen(Qt::green));
+    paretoSet->setPen(QPen(Qt::darkGreen));
 
+    //points
+    plot->addGraph();
     auto pointsGraph = plot->graph(3);
     pointsGraph->setLineStyle(QCPGraph::lsNone);
     pointsGraph->setScatterStyle(QCPScatterStyle(QCPScatterStyle::ssCross));
-    auto pen = pointsGraph->pen();
-    pen.setColor(Qt::red);
-    pen.setWidth(2);
-    pointsGraph->setPen(pen);
+    auto pointsPen = pointsGraph->pen();
+    pointsPen.setColor(Qt::red);
+    pointsPen.setWidth(2);
+    pointsGraph->setPen(pointsPen);
+
+    //result
+    plot->addGraph();
+    auto resultGraph = plot->graph(4);
+    resultGraph->setLineStyle(QCPGraph::lsNone);
+    resultGraph->setScatterStyle(QCPScatterStyle(QCPScatterStyle::ssCircle));
+    auto resultPen = resultGraph->pen();
+    resultPen.setColor(Qt::darkGray);
+    resultPen.setWidth(2);
+    resultGraph->setPen(resultPen);
+
+    //debug
+    plot->addGraph();
+    auto debugGraph = plot->graph(5);
+    debugGraph->setLineStyle(QCPGraph::lsNone);
+    debugGraph->setScatterStyle(QCPScatterStyle(QCPScatterStyle::ssCircle));
+    auto debugPen = debugGraph->pen();
+    debugPen.setColor(Qt::cyan);
+    debugPen.setWidth(2);
+    debugGraph->setPen(debugPen);
 }
 
 void MainWindow::plotEdgeworth(QCustomPlot* plot, const Simulation::EdgeworthSituation& situation) const {
@@ -46,7 +72,8 @@ void MainWindow::plotEdgeworth(QCustomPlot* plot, const Simulation::EdgeworthSit
     plot->yAxis->setRange(0.0, situation.q2Sum);
 
     auto curve1Graph = plot->graph(0);
-    ResourceDataPair data1 = sampleFunction(situation.getCurve1Function(), q1RangeStart, situation.q1Sum, q1Resolution);
+    ResourceDataPair data1 = sampleFunction(
+                situation.getCurve1Function(), q1RangeStart, situation.q1Sum, q1Resolution);
     curve1Graph->setData(data1.x, data1.y);
     //ResourceDataPair data1 = sampleFunction(situation.getCurve1Function(), situation.actor1.q1, situation.q1Sum, q1Resolution);
     /*auto graph1Brush = graph1->brush();
@@ -69,15 +96,13 @@ void MainWindow::plotEdgeworth(QCustomPlot* plot, const Simulation::EdgeworthSit
 
     auto pointsGraph = plot->graph(3);
     auto fixPoint = situation.getFixPoint();
-    pointsGraph->addData(fixPoint.x, fixPoint.y);
+    pointsGraph->addData(fixPoint.q1, fixPoint.q2);
 
-    Amount_t const p1_q1 = situation.calculateCurve1ParetoIntersection();
-    Amount_t const p1_q2 = situation.getCurve1Function()(p1_q1);
-    pointsGraph->addData(p1_q1, p1_q2);
+    auto p1Point = situation.calculateCurve1ParetoIntersection();
+    pointsGraph->addData(p1Point.q1, p1Point.q2);
 
-    Amount_t const p2_q1 = situation.calculateCurve2ParetoIntersection();
-    Amount_t const p2_q2 = situation.getCurve2Function()(p2_q1);
-    pointsGraph->addData(p2_q1, p2_q2);
+    auto p2Point = situation.calculateCurve2ParetoIntersection();
+    pointsGraph->addData(p2Point.q1, p2Point.q2);
 }
 
 void MainWindow::setupDistributionPlot(QCustomPlot* plot, QString xLabel, QString yLabel)
@@ -118,6 +143,8 @@ void MainWindow::plotUtilityDistribution(QCustomPlot* plot, Simulation const& si
     plotDistribution(plot, simulation.computeUtilities(), resolution);
 }
 
+std::function<void(Position const&)> debugShowPoint;
+
 MainWindow::MainWindow(QWidget *parent) :
     QMainWindow(parent),
     ui(new Ui::MainWindow)
@@ -132,10 +159,17 @@ MainWindow::MainWindow(QWidget *parent) :
 
     Simulation simulation;
     simulation.setup(100, 10000, 8000, 0.5, 0.5);
+    simulation.tradeStrategy.reset(new OppositeParetoTradeStrategy);
 
     //sample
     Simulation::EdgeworthSituation situation(simulation, 0, 1);
     plotEdgeworth(ui->plotEdgeworthBox, situation);
+    debugShowPoint = [this](Position p){
+        auto debugGraph = ui->plotEdgeworthBox->graph(5);
+        debugGraph->addData(p.q1, p.q2);
+    };
+    RandomTriangleTradeStrategy strategy;
+    strategy.propose(situation);
 
     //plot distributions
     Amount_t const q1Resolution = simulation.amounts[0] / simulation.numActors;
