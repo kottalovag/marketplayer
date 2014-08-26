@@ -14,11 +14,11 @@
    <string>MarketPlayer</string>
   </property>
   <widget class="QWidget" name="centralWidget">
-   <layout class="QHBoxLayout" name="horizontalLayout_9">
+   <layout class="QVBoxLayout" name="verticalLayout_7">
     <item>
      <widget class="QTabWidget" name="tabWidget">
       <property name="currentIndex">
-       <number>0</number>
+       <number>1</number>
       </property>
       <widget class="QWidget" name="tabSetup">
        <attribute name="title">
@@ -309,9 +309,29 @@
               <string>Utility Distribution</string>
              </property>
              <widget class="QWidget" name="dockWidgetContents_4">
-              <layout class="QHBoxLayout" name="horizontalLayout_3">
+              <layout class="QVBoxLayout" name="verticalLayout_8">
                <item>
-                <widget class="QCustomPlot" name="plotUtilityDistribution" native="true"/>
+                <widget class="QCustomPlot" name="plotUtilityDistribution" native="true">
+                 <property name="sizePolicy">
+                  <sizepolicy hsizetype="Preferred" vsizetype="Expanding">
+                   <horstretch>0</horstretch>
+                   <verstretch>0</verstretch>
+                  </sizepolicy>
+                 </property>
+                </widget>
+               </item>
+               <item>
+                <widget class="QLabel" name="labelSumUtilities">
+                 <property name="sizePolicy">
+                  <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
+                   <horstretch>0</horstretch>
+                   <verstretch>0</verstretch>
+                  </sizepolicy>
+                 </property>
+                 <property name="text">
+                  <string>TextLabel</string>
+                 </property>
+                </widget>
                </item>
               </layout>
              </widget>
@@ -354,24 +374,103 @@
            <string>Time Tuning</string>
           </property>
           <layout class="QHBoxLayout" name="horizontalLayout">
+           <property name="topMargin">
+            <number>0</number>
+           </property>
+           <property name="bottomMargin">
+            <number>0</number>
+           </property>
            <item>
-            <widget class="QPushButton" name="pushButtonStart">
+            <layout class="QVBoxLayout" name="verticalLayout_6">
+             <property name="spacing">
+              <number>0</number>
+             </property>
+             <item>
+              <layout class="QHBoxLayout" name="horizontalLayout_10">
+               <item>
+                <widget class="QPushButton" name="pushButtonNextRound">
+                 <property name="text">
+                  <string>Next Round</string>
+                 </property>
+                </widget>
+               </item>
+               <item>
+                <widget class="QPushButton" name="pushButtonStart">
+                 <property name="text">
+                  <string>Start</string>
+                 </property>
+                </widget>
+               </item>
+               <item>
+                <widget class="QPushButton" name="pushButtonPause">
+                 <property name="text">
+                  <string>Pause</string>
+                 </property>
+                </widget>
+               </item>
+              </layout>
+             </item>
+             <item>
+              <layout class="QHBoxLayout" name="horizontalLayout_11">
+               <item>
+                <widget class="QLabel" name="label_2">
+                 <property name="sizePolicy">
+                  <sizepolicy hsizetype="Fixed" vsizetype="Preferred">
+                   <horstretch>0</horstretch>
+                   <verstretch>0</verstretch>
+                  </sizepolicy>
+                 </property>
+                 <property name="text">
+                  <string>Speed:</string>
+                 </property>
+                </widget>
+               </item>
+               <item>
+                <widget class="QSlider" name="sliderSpeed">
+                 <property name="sizePolicy">
+                  <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
+                   <horstretch>0</horstretch>
+                   <verstretch>0</verstretch>
+                  </sizepolicy>
+                 </property>
+                 <property name="maximum">
+                  <number>10</number>
+                 </property>
+                 <property name="orientation">
+                  <enum>Qt::Horizontal</enum>
+                 </property>
+                 <property name="invertedAppearance">
+                  <bool>true</bool>
+                 </property>
+                 <property name="invertedControls">
+                  <bool>false</bool>
+                 </property>
+                 <property name="tickPosition">
+                  <enum>QSlider::TicksBelow</enum>
+                 </property>
+                </widget>
+               </item>
+              </layout>
+             </item>
+            </layout>
+           </item>
+           <item>
+            <widget class="QLabel" name="label_3">
              <property name="text">
-              <string>Start</string>
+              <string>Time:</string>
              </property>
             </widget>
            </item>
            <item>
-            <widget class="QPushButton" name="pushButtonPause">
-             <property name="text">
-              <string>Pause</string>
+            <widget class="QSlider" name="sliderTime">
+             <property name="statusTip">
+              <string/>
              </property>
-            </widget>
-           </item>
-           <item>
-            <widget class="QSlider" name="horizontalSliderTime">
              <property name="orientation">
               <enum>Qt::Horizontal</enum>
+             </property>
+             <property name="tickPosition">
+              <enum>QSlider::TicksBelow</enum>
              </property>
             </widget>
            </item>
@@ -399,7 +498,7 @@
          </widget>
         </item>
         <item>
-         <widget class="QGroupBox" name="groupBox">
+         <widget class="QGroupBox" name="groupBoxProgress">
           <property name="sizePolicy">
            <sizepolicy hsizetype="Preferred" vsizetype="Minimum">
             <horstretch>0</horstretch>
@@ -407,13 +506,13 @@
            </sizepolicy>
           </property>
           <property name="title">
-           <string>GroupBox</string>
+           <string>Progress of current round</string>
           </property>
           <layout class="QHBoxLayout" name="horizontalLayout_2">
            <item>
-            <widget class="QPushButton" name="pushButtonNext">
+            <widget class="QPushButton" name="pushButtonNextTrade">
              <property name="text">
-              <string>Next</string>
+              <string>Next Trade</string>
              </property>
             </widget>
            </item>
@@ -458,7 +557,19 @@
     </property>
     <addaction name="actionSaveEdgeworthDiagram"/>
    </widget>
+   <widget class="QMenu" name="menuSimulation">
+    <property name="title">
+     <string>Simulation</string>
+    </property>
+    <addaction name="actionApply"/>
+    <addaction name="separator"/>
+    <addaction name="actionNextTrade"/>
+    <addaction name="actionNextRound"/>
+    <addaction name="actionStart"/>
+    <addaction name="actionPause"/>
+   </widget>
    <addaction name="menuDiagram"/>
+   <addaction name="menuSimulation"/>
   </widget>
   <widget class="QToolBar" name="mainToolBar">
    <attribute name="toolBarArea">
@@ -472,6 +583,34 @@
   <action name="actionSaveEdgeworthDiagram">
    <property name="text">
     <string>SaveEdgeworthDiagram</string>
+   </property>
+  </action>
+  <action name="actionApply">
+   <property name="text">
+    <string>Apply</string>
+   </property>
+  </action>
+  <action name="actionStart">
+   <property name="text">
+    <string>Start</string>
+   </property>
+  </action>
+  <action name="actionPause">
+   <property name="text">
+    <string>Pause</string>
+   </property>
+  </action>
+  <action name="actionNextRound">
+   <property name="text">
+    <string>Next Round</string>
+   </property>
+  </action>
+  <action name="actionNextTrade">
+   <property name="text">
+    <string>Next Trade</string>
+   </property>
+   <property name="shortcut">
+    <string>Ctrl+N</string>
    </property>
   </action>
  </widget>
@@ -495,12 +634,43 @@
   <tabstop>radioButtonRandomTriangle</tabstop>
   <tabstop>pushButtonApply</tabstop>
   <tabstop>tabWidget</tabstop>
-  <tabstop>pushButtonStart</tabstop>
-  <tabstop>pushButtonPause</tabstop>
-  <tabstop>horizontalSliderTime</tabstop>
+  <tabstop>sliderTime</tabstop>
   <tabstop>spinBoxTime</tabstop>
-  <tabstop>pushButtonNext</tabstop>
+  <tabstop>pushButtonNextTrade</tabstop>
  </tabstops>
  <resources/>
- <connections/>
+ <connections>
+  <connection>
+   <sender>spinBoxTime</sender>
+   <signal>valueChanged(int)</signal>
+   <receiver>sliderTime</receiver>
+   <slot>setValue(int)</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>741</x>
+     <y>459</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>711</x>
+     <y>459</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>sliderTime</sender>
+   <signal>valueChanged(int)</signal>
+   <receiver>spinBoxTime</receiver>
+   <slot>setValue(int)</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>655</x>
+     <y>457</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>759</x>
+     <y>455</y>
+    </hint>
+   </hints>
+  </connection>
+ </connections>
 </ui>

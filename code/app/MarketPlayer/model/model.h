@@ -105,6 +105,13 @@ typedef std::unordered_map<Amount_t, bool, std::hash<Amount_t>, ResourceToleranc
 
 ResourceDataPair sampleFunction(std::function<double(double)> func, Amount_t rangeStart, Amount_t rangeFinish, Amount_t resolution);
 
+struct History
+{
+    History(): time(0) {}
+    size_t time;
+    void roundFinished() { ++time; }
+};
+
 struct AbstractTradeStrategy;
 
 struct Simulation
@@ -128,11 +135,13 @@ struct Simulation
     };
 
     struct EdgeworthSituation {
-        ActorRef actor1, actor2;
-        IndifferenceCurve curve1, curve2;
+        ActorConstRef actor1, actor2;
+        IndifferenceCurve const curve1, curve2;
         Amount_t const q1Sum, q2Sum;
+        Position const result;
 
-        EdgeworthSituation(Simulation& simulation, size_t const actor1Idx, size_t const actor2Idx);
+        EdgeworthSituation(Simulation const& simulation, size_t const actor1Idx, size_t const actor2Idx,
+                           AbstractTradeStrategy& tradeStrategy);
         std::function<Amount_t(Amount_t)> getCurve1Function() const;
         std::function<Amount_t(Amount_t)> getCurve2Function() const;
         std::function<Amount_t(Amount_t)> getParetoSetFunction() const;
@@ -148,41 +157,61 @@ struct Simulation
         Amount_t calculateParetoIntersectionQ1(IndifferenceCurve const& curve) const;
     };
 
+    struct Progress
+    {
+        void setup(size_t numActor);
+        tuple<size_t, size_t> getCurrentPair() const;
+        bool advance();
+        size_t getDone() const { return actIdx / 2; }
+        size_t getNum() const { return permutation.size() / 2; }
+        bool wasRestarted() const { return restarted; }
+
+    private:
+        bool isFinished() const;
+        bool restarted;
+
+    private:
+        void shufflePermutation();
+
+        vector<size_t> permutation;
+        size_t actIdx;
+    };
+
+    History history;
+    Progress progress;
     Utility utility;
     vector<vector<Amount_t>> resources;
-    vector<size_t> permutation;
     size_t numActors;
     vector<Amount_t> amounts;
 
     unique_ptr<AbstractTradeStrategy> tradeStrategy;
 
-    void setupPermutation();
-    void shufflePermutation();
-    bool checkResources(size_t resourceIdx);
-    void printResources(size_t resourceIdx);
     static void setupResources(vector<Amount_t>& resources, Amount_t const sumAmount, size_t const numActors);
     bool setup(size_t numActors, unsigned amountQ1, unsigned amountQ2, double alfa1, double alfa2);
-    void nextRound();
+    bool performNextTrade();
+    void performNextRound();
+    EdgeworthSituation getNextSituation() const;
 
     vector<Amount_t> computeUtilities() const;
 };
 
 struct AbstractTradeStrategy
 {
-    virtual Position propose(Simulation::EdgeworthSituation& situation) = 0;
-    Position trade(Simulation::EdgeworthSituation& situation);
+    virtual Position propose(Simulation::EdgeworthSituation& situation) const = 0;
+    void trade(Simulation::EdgeworthSituation& situation,
+                   Simulation::ActorRef& actor1, Simulation::ActorRef& actor2);
     virtual ~AbstractTradeStrategy(){}
 };
 
 struct OppositeParetoTradeStrategy: AbstractTradeStrategy
 {
-    virtual Position propose(Simulation::EdgeworthSituation &situation) override;
+    virtual Position propose(Simulation::EdgeworthSituation &situation) const override;
     virtual ~OppositeParetoTradeStrategy() {}
 };
 
 struct RandomParetoTradeStrategy: AbstractTradeStrategy
 {
-    virtual Position propose(Simulation::EdgeworthSituation &situation) override;
+    virtual Position propose(Simulation::EdgeworthSituation &situation) const override;
     virtual ~RandomParetoTradeStrategy() {}
 };
 
@@ -190,7 +219,7 @@ bool isPointInTriangle(Position const& p0, Position const& p1, Position const& p
 
 struct RandomTriangleTradeStrategy: AbstractTradeStrategy
 {
-    virtual Position propose(Simulation::EdgeworthSituation &situation) override;
+    virtual Position propose(Simulation::EdgeworthSituation &situation) const override;
     virtual ~RandomTriangleTradeStrategy() {}
 };
 

@@ -48,13 +48,15 @@ bool ResourceToleranceEquality::operator()(const Amount_t& x, const Amount_t& y)
     return fabs(x-y) < std::numeric_limits<Amount_t>::epsilon();
 }
 
-Simulation::EdgeworthSituation::EdgeworthSituation(Simulation& simulation, const size_t actor1Idx, const size_t actor2Idx)
+Simulation::EdgeworthSituation::EdgeworthSituation(const Simulation& simulation, const size_t actor1Idx, const size_t actor2Idx,
+        AbstractTradeStrategy& tradeStrategy)
     : actor1(simulation, actor1Idx)
     , actor2(simulation, actor2Idx)
     , curve1(simulation.utility, actor1.q1, actor1.q2)
     , curve2(simulation.utility, actor2.q1, actor2.q2)
     , q1Sum(actor1.q1 + actor2.q1)
     , q2Sum(actor1.q2 + actor2.q2)
+    , result(tradeStrategy.propose(*this))
 {
 }
 
@@ -92,58 +94,57 @@ Position Simulation::EdgeworthSituation::calculateCurve2ParetoIntersection() con
     return Position{q1, q2};
 }
 
-void Simulation::setupPermutation() {
+void Simulation::Progress::setup(size_t numActors) {
     permutation.resize(numActors);
     std::generate(permutation.begin(), permutation.end(), IndexNumber());
+    shufflePermutation();
+    actIdx = 0;
+    restarted = false;
 }
 
-void Simulation::shufflePermutation() {
+tuple<size_t, size_t> Simulation::Progress::getCurrentPair() const
+{
+    return make_tuple(permutation[actIdx], permutation[actIdx+1]);
+}
+
+bool Simulation::Progress::advance()
+{
+    restarted = false;
+    actIdx += 2;
+    bool const finished = isFinished();
+    if (finished) {
+        shufflePermutation();
+        actIdx = 0;
+        restarted = true;
+    }
+    return finished;
+}
+
+void Simulation::Progress::shufflePermutation() {
     std::shuffle(permutation.begin(), permutation.end(), urng);
 }
 
-bool Simulation::checkResources(size_t resourceIdx) {
-    auto const& res = resources[resourceIdx];
-    Amount_t const sum = std::accumulate(res.begin(), res.end(), 0.0);
-    cout << "asserted sum: " << sum << " actual sum: " << amounts[resourceIdx] << endl;
-    //return sum <= mAmounts[resourceIdx];
-    return fabs(sum - amounts[resourceIdx]) < std::numeric_limits<Amount_t>::epsilon() * numActors;
-}
-
-void Simulation::printResources(size_t resourceIdx) {
-    Amount_t sum = 0.0;
-    foreach (auto res, resources[resourceIdx]) {
-        sum += res;
-        cout << res << ",";
-    }
-    cout << endl;
-    cout << "sum: " << sum << endl;
+bool Simulation::Progress::isFinished() const
+{
+    return actIdx == permutation.size();
 }
 
 void Simulation::setupResources(vector<Amount_t>& resources, const Amount_t sumAmount, const size_t numActors) {
-    PinPointMap isPinPointUsed;
-    vector<Amount_t> pinPoints;
-    pinPoints.reserve(numActors);
-
-    std::uniform_real_distribution<Amount_t> uniformDistribution(0.0, sumAmount);
-    while (pinPoints.size() < numActors) {
-        Amount_t pinPoint = uniformDistribution(urng);
-        if (!isPinPointUsed[pinPoint]) {
-            isPinPointUsed[pinPoint] = true;
-            pinPoints.push_back(pinPoint);
-        }
-    }
-    std::sort(pinPoints.begin(), pinPoints.end());
-
     resources.resize(numActors);
-    Amount_t const amountAtBorder = pinPoints[0] + (sumAmount - pinPoints.back());
-    for (size_t actorIdx = numActors-1; actorIdx > 0; --actorIdx) {
-        resources[actorIdx] = pinPoints[actorIdx] - pinPoints[actorIdx-1];
+    std::generate_n(resources.begin(), numActors, [](){
+        std::uniform_real_distribution<Amount_t> uniformDistribution(0.0, 1.0);
+        return uniformDistribution(urng);
+    });
+    Amount_t const sumRandom = std::accumulate(resources.begin(), resources.end(), 0.0);
+    double const ratio = sumAmount/sumRandom;
+    for (auto& element : resources) {
+        element *= ratio;
     }
-    resources[0] = amountAtBorder;
 }
 
 bool Simulation::setup(size_t numActors, unsigned amountQ1, unsigned amountQ2, double alfa1, double alfa2) {
     if (numActors%2 != 0) return false;
+    history.time = 0; //todo setup
     amounts.resize(0);
     amounts.push_back(amountQ1);
     amounts.push_back(amountQ2);
@@ -151,19 +152,39 @@ bool Simulation::setup(size_t numActors, unsigned amountQ1, unsigned amountQ2, d
     this->numActors = numActors;
     utility.alfa1 = alfa1;
     utility.alfa2 = alfa2;
-    setupPermutation();
+    progress.setup(numActors);
     for (size_t idx = 0; idx < amounts.size(); ++idx) {
         setupResources(resources[idx], amounts[idx], numActors);
-        //Q_ASSERT(checkResources(idx));
     }
     return true;
 }
 
-void Simulation::nextRound() {
-    shufflePermutation();
-    for (size_t idx = 0; idx < numActors; idx += 2) {
-        EdgeworthSituation situation(*this, permutation[idx], permutation[idx+1]);
+Simulation::EdgeworthSituation Simulation::getNextSituation() const
+{
+    size_t actor1Idx, actor2Idx;
+    std::tie(actor1Idx, actor2Idx) = progress.getCurrentPair();
+    return EdgeworthSituation(*this, actor1Idx, actor2Idx, *tradeStrategy);
+}
+
+bool Simulation::performNextTrade()
+{
+    size_t actor1Idx, actor2Idx;
+    std::tie(actor1Idx, actor2Idx) = progress.getCurrentPair();
+    auto situation = getNextSituation();
+    ActorRef actor1(*this, actor1Idx);
+    ActorRef actor2(*this, actor2Idx);
+    tradeStrategy->trade(situation, actor1, actor2);
+
+    bool const progressFinished = progress.advance();
+    if (progressFinished) {
+        history.roundFinished();
     }
+    return progressFinished;
+}
+
+void Simulation::performNextRound()
+{
+    while (!performNextTrade());
 }
 
 ResourceDataPair sampleFunction(std::function<double (double)> func, Amount_t rangeStart, Amount_t rangeFinish, Amount_t resolution){
@@ -203,34 +224,34 @@ Distribution::Distribution(const vector<Amount_t>& subject, Amount_t resolution)
     }
 }
 
-Position OppositeParetoTradeStrategy::propose(Simulation::EdgeworthSituation& situation)
+Position OppositeParetoTradeStrategy::propose(Simulation::EdgeworthSituation& situation) const
 {
     Position const p2 = situation.calculateCurve2ParetoIntersection();
-    debugShowPoint(p2);
+    //debugShowPoint(p2);
     return p2;
 }
 
-Position RandomParetoTradeStrategy::propose(Simulation::EdgeworthSituation& situation)
+Position RandomParetoTradeStrategy::propose(Simulation::EdgeworthSituation& situation) const
 {
     Position const p2 = situation.calculateCurve2ParetoIntersection();
     Position const p1 = situation.calculateCurve1ParetoIntersection();
     double const factor = std::uniform_real_distribution<double>(0.0, 1.0)(urng);
     auto const result = p1 + (p2 - p1) * factor;
-    debugShowPoint(result);
+    //debugShowPoint(result);
     return result;
 }
 
-Position RandomTriangleTradeStrategy::propose(Simulation::EdgeworthSituation& situation)
+Position RandomTriangleTradeStrategy::propose(Simulation::EdgeworthSituation& situation) const
 {
     Position const p0 = situation.getFixPoint();
     Position const p1 = situation.calculateCurve1ParetoIntersection();
     Position const p2 = situation.calculateCurve2ParetoIntersection();
-    auto const v01 = (p1 - p0);
-    auto const v02 = (p2 - p0);
 
     std::uniform_real_distribution<double> udist(0.0, 1.0);
 
     //we pick a point as if in a paralelogram for sake of uniformity
+    auto const v01 = (p1 - p0);
+    auto const v02 = (p2 - p0);
     double const factor1 = udist(urng);
     double const factor2 = udist(urng);
     Position px = p0 + v01*factor1 + v02*factor2;
@@ -242,7 +263,7 @@ Position RandomTriangleTradeStrategy::propose(Simulation::EdgeworthSituation& si
         auto origo = p1 + (p2 - p1) * 0.5;
         px = px + (origo - px) * 2.0;
     }
-    debugShowPoint(px);
+    //debugShowPoint(px);
     return px;
 }
 
@@ -267,10 +288,11 @@ bool isPointInTriangle(const Position& p0, const Position& p1, const Position& p
             0.0 <= c && c <= 1.0;
 }
 
-Position AbstractTradeStrategy::trade(Simulation::EdgeworthSituation& situation)
+void AbstractTradeStrategy::trade(Simulation::EdgeworthSituation& situation,
+                                      Simulation::ActorRef& actor1, Simulation::ActorRef& actor2)
 {
-    auto proposal = propose(situation);
-    situation.actor1.q1 = proposal.q1;
-    situation.actor1.q2 = proposal.q2;
-    return proposal;
+    actor1.q1 = situation.result.q1;
+    actor1.q2 = situation.result.q2;
+    actor2.q1 = situation.q1Sum - actor1.q1;
+    actor2.q2 = situation.q2Sum - actor1.q2;
 }
