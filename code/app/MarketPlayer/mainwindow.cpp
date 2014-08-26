@@ -37,6 +37,17 @@ MainWindow::~MainWindow()
     delete ui;
 }
 
+void MainWindow::setupSpeedControls()
+{
+    timer = new QTimer(this);
+    timer->setInterval(calculateSpeedInterval());
+    connect(timer, SIGNAL(timeout()),
+            ui->actionNextRound, SLOT(trigger()));
+
+    ui->sliderSpeed->setMaximum(8);
+    ui->sliderSpeed->setValue(3);
+}
+
 void MainWindow::setupControlsStartup()
 {
     ui->lineEditNumActors->setText("100");
@@ -75,10 +86,7 @@ void MainWindow::setupControlsStartup()
 
     ui->sliderTime->setValue(0);
 
-    timer = new QTimer(this);
-    timer->setInterval(calculateSpeedInterval());
-    connect(timer, SIGNAL(timeout()),
-            ui->actionNextRound, SLOT(trigger()));
+    setupSpeedControls();
 
     resetControls();
 

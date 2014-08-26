@@ -19,6 +19,7 @@ public:
 
 
     void changeToTab(QTabWidget* tabWidget, QWidget* desiredTab);
+    void setupSpeedControls();
 private:
     int calculateSpeedInterval() const;
     void setupControlsStartup();
