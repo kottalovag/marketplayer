@@ -171,8 +171,8 @@ Simulation::EdgeworthSituation Simulation::getNextSituation() const
 
 void Simulation::saveHistory()
 {
-    history.q1Traded.push_back(roundInfo.q1Traded);
-    history.q2Traded.push_back(roundInfo.q2Traded);
+    history.q1Traded.push(roundInfo.q1Traded);
+    history.q2Traded.push(roundInfo.q2Traded);
 
     auto& moment = history.newMoment();
 
@@ -188,7 +188,7 @@ void Simulation::saveHistory()
     auto const& utilities = computeUtilities();
     moment.utilityDistribution.setup(utilities, utilityResolution);
     auto sumUtilities = std::accumulate(utilities.begin(), utilities.end(), 0.0);
-    history.sumUtilities.push_back(sumUtilities);
+    history.sumUtilities.push(sumUtilities);
 }
 
 bool Simulation::performNextTrade()
@@ -338,13 +338,14 @@ Moment& History::newMoment()
     return moments.back();
 }
 
+#include <initializer_list>
 void History::reset()
 {
     time = 0;
+    q1Traded.reset();
+    q2Traded.reset();
+    sumUtilities.reset();
     moments.resize(0);
-    q1Traded.resize(0);
-    q2Traded.resize(0);
-    sumUtilities.resize(0);
 }
 
 

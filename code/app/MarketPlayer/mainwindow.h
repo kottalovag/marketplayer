@@ -27,10 +27,11 @@ private:
 
     void setupEdgeworthBox();
     void setupDistributionPlot(QCustomPlot* plot, QString xLabel, QString yLabel);
-
+    void setupDataTimePlot(QCustomPlot* plot, QString yLabel);
     void plotEdgeworth(QCustomPlot* plot, Simulation::EdgeworthSituation const& situation);
 
-    static void plotDistribution(QCustomPlot* plot, const HeavyDistribution &distribution);
+    static void plotDistribution(QCustomPlot* plot, HeavyDistribution const& distribution);
+    static void plotDataTime(QCustomPlot* plot, DataTimePair const& data, int currentIdx);
 
     void plotResourceDistribution(QCustomPlot* plot, const Simulation& simulation, size_t resourceIdx, Amount_t resolution) const;
     void plotUtilityDistribution(QCustomPlot* plot, const Simulation& simulation, Amount_t resolution) const;

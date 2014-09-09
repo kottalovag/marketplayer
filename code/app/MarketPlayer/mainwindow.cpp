@@ -25,6 +25,9 @@ MainWindow::MainWindow(QWidget *parent) :
     setupDistributionPlot(ui->plotQ1Distribution, "Q1", "Actors");
     setupDistributionPlot(ui->plotQ2Distribution, "Q2", "Actors");
     setupDistributionPlot(ui->plotUtilityDistribution, "Utility", "Actors");
+    setupDataTimePlot(ui->plotQ1Traded, "Q1 traded");
+    setupDataTimePlot(ui->plotQ2Traded, "Q2 traded");
+    setupDataTimePlot(ui->plotSumUtility, "Sum of utilities");
 
     debugShowPoint = [this](Position p){
         auto debugGraph = ui->plotEdgeworthBox->graph(5);
@@ -194,6 +197,25 @@ void MainWindow::setupEdgeworthBox()
     debugGraph->setPen(debugPen);
 }
 
+void MainWindow::setupDataTimePlot(QCustomPlot *plot, QString yLabel)
+{
+    plot->xAxis->setLabel("Time");
+    plot->yAxis->setLabel(yLabel);
+
+    //data
+    plot->addGraph();
+
+    //current point
+    plot->addGraph();
+    auto currentGraph = plot->graph(1);
+    currentGraph->setLineStyle(QCPGraph::lsNone);
+    currentGraph->setScatterStyle(QCPScatterStyle(QCPScatterStyle::ssCross));
+    auto currentPen = currentGraph->pen();
+    currentPen.setColor(Qt::black);
+    currentPen.setWidth(2);
+    currentGraph->setPen(currentPen);
+}
+
 void MainWindow::plotEdgeworth(QCustomPlot* plot, Simulation::EdgeworthSituation const& situation) {
     cleanPlotData(plot);
 
@@ -242,6 +264,8 @@ void MainWindow::plotEdgeworth(QCustomPlot* plot, Simulation::EdgeworthSituation
     plot->replot();
 }
 
+
+
 void MainWindow::setupDistributionPlot(QCustomPlot* plot, QString xLabel, QString yLabel)
 {
     auto bars = new QCPBars(plot->xAxis, plot->yAxis);
@@ -270,6 +294,17 @@ void MainWindow::plotDistribution(QCustomPlot* plot, HeavyDistribution const& di
     plot->replot();
 }
 
+void MainWindow::plotDataTime(QCustomPlot* plot, DataTimePair const& dataTime, int currentIdx)
+{
+    plot->xAxis->setRange(0.0, dataTime.data.x.last() + 1);
+    plot->yAxis->setRange(0.0, dataTime.max * 1.1);
+    plot->graph(0)->setData(dataTime.data.x, dataTime.data.y);
+
+    plot->graph(1)->clearData();
+    plot->graph(1)->addData(currentIdx, dataTime[currentIdx]);
+    plot->replot();
+}
+
 void MainWindow::updateOverview()
 {
     loadHistoryMoment(simulation.history.time - 1);
@@ -285,6 +320,10 @@ void MainWindow::loadHistoryMoment(int time)
     plotDistribution(ui->plotUtilityDistribution, moment.utilityDistribution);
 
     ui->labelSumUtilities->setText("Sum: " + QString::number(simulation.history.sumUtilities[momentIdx]));
+
+    plotDataTime(ui->plotQ1Traded, simulation.history.q1Traded, time);
+    plotDataTime(ui->plotQ2Traded, simulation.history.q2Traded, time);
+    plotDataTime(ui->plotSumUtility, simulation.history.sumUtilities, time);
 }
 
 void MainWindow::updateTimeRange()

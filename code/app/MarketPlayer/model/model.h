@@ -77,9 +77,32 @@ struct DataPair
         x.resize(size);
         y.resize(size);
     }
+    void reset() {
+        resize(0);
+    }
 };
 
 typedef DataPair<Amount_t> ResourceDataPair;
+
+struct DataTimePair
+{
+    DataPair<Amount_t> data;
+    Amount_t max;
+    Amount_t getLastX() const { return data.x.size() - 1; }
+    void push(Amount_t newData) {
+        data.push(getLastX() + 1, newData);
+        if (newData > max) {
+            max = newData;
+        }
+    }
+    void reset() {
+        max = 0.0;
+        data.reset();
+    }
+    Amount_t const& operator[](size_t idx) const {
+        return data.y[idx];
+    }
+};
 
 struct Utility
 {
@@ -137,7 +160,7 @@ struct History
     History();
     size_t time;
     vector<Moment> moments;
-    vector<Amount_t> q1Traded, q2Traded, sumUtilities;
+    DataTimePair q1Traded, q2Traded, sumUtilities;
     Moment& newMoment();
     void reset();
 };
