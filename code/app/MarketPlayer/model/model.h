@@ -105,11 +105,41 @@ typedef std::unordered_map<Amount_t, bool, std::hash<Amount_t>, ResourceToleranc
 
 ResourceDataPair sampleFunction(std::function<double(double)> func, Amount_t rangeStart, Amount_t rangeFinish, Amount_t resolution);
 
+struct Distribution {
+    vector<Amount_t> const& subject;
+    Amount_t const resolution;
+    Amount_t const maxSubject;
+    size_t const numBuckets;
+
+    ResourceDataPair data;
+
+    Distribution(vector<Amount_t> const& subject, Amount_t resolution);
+};
+
+struct HeavyDistribution
+{
+    Amount_t resolution;
+    Amount_t maxSubject;
+    Amount_t maxNum;
+    size_t numBuckets;
+    ResourceDataPair data;
+
+    void setup(vector<Amount_t> const& subject, Amount_t resolution);
+};
+
+struct Moment
+{
+    HeavyDistribution q1Distribution, q2Distribution, utilityDistribution;
+};
+
 struct History
 {
-    History(): time(0) {}
+    History();
     size_t time;
-    void roundFinished() { ++time; }
+    vector<Moment> moments;
+    vector<Amount_t> q1Traded, q2Traded, sumUtilities;
+    Moment& newMoment();
+    void reset();
 };
 
 struct AbstractTradeStrategy;
@@ -177,12 +207,20 @@ struct Simulation
         size_t actIdx;
     };
 
+    struct RoundInfo
+    {
+        void reset();
+        void recordTrade(Position traded);
+        Amount_t q1Traded, q2Traded;
+    };
+
     History history;
     Progress progress;
     Utility utility;
     vector<vector<Amount_t>> resources;
     size_t numActors;
     vector<Amount_t> amounts;
+    RoundInfo roundInfo;
 
     unique_ptr<AbstractTradeStrategy> tradeStrategy;
 
@@ -193,12 +231,13 @@ struct Simulation
     EdgeworthSituation getNextSituation() const;
 
     vector<Amount_t> computeUtilities() const;
+    void saveHistory();
 };
 
 struct AbstractTradeStrategy
 {
     virtual Position propose(Simulation::EdgeworthSituation& situation) const = 0;
-    void trade(Simulation::EdgeworthSituation& situation,
+    Position trade(Simulation::EdgeworthSituation& situation,
                    Simulation::ActorRef& actor1, Simulation::ActorRef& actor2);
     virtual ~AbstractTradeStrategy(){}
 };
@@ -221,15 +260,4 @@ struct RandomTriangleTradeStrategy: AbstractTradeStrategy
 {
     virtual Position propose(Simulation::EdgeworthSituation &situation) const override;
     virtual ~RandomTriangleTradeStrategy() {}
-};
-
-struct Distribution {
-    vector<Amount_t> const& subject;
-    Amount_t const resolution;
-    Amount_t const max;
-    size_t const numBuckets;
-
-    ResourceDataPair data;
-
-    Distribution(vector<Amount_t> const& subject, Amount_t resolution);
 };

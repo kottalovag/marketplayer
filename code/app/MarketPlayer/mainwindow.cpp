@@ -256,53 +256,40 @@ void MainWindow::setupDistributionPlot(QCustomPlot* plot, QString xLabel, QStrin
     bars->setBrush(brush);*/
 }
 
-void MainWindow::plotDistribution(QCustomPlot* plot, const vector<Amount_t>& subject, Amount_t resolution)
+void MainWindow::plotDistribution(QCustomPlot* plot, HeavyDistribution const& distribution)
 {
-    Distribution const distribution(subject, resolution);
     auto const& data = distribution.data;
 
     auto bars = static_cast<QCPBars*>(plot->plottable(0));
-    bars->setWidth(resolution);
+    bars->setWidth(distribution.resolution);
     bars->setData(data.x, data.y);
-    plot->xAxis->setRange(0.0, data.x.last()+resolution);
-    plot->yAxis->setRange(0.0, *std::max_element(data.y.begin(), data.y.end()) + 1.0);
-    plot->xAxis->setTickStep(resolution);
+    plot->xAxis->setRange(0.0, data.x.last() + distribution.resolution);
+    plot->yAxis->setRange(0.0, distribution.maxNum + 1.0);
+    plot->xAxis->setTickStep(distribution.resolution);
 
     plot->replot();
 }
 
-void MainWindow::plotResourceDistribution(
-        QCustomPlot* plot, Simulation const& simulation, size_t resourceIdx, Amount_t resolution) const
-{
-    plotDistribution(plot, simulation.resources[resourceIdx], resolution);
-}
-
-void MainWindow::plotUtilityDistribution(QCustomPlot* plot, Simulation const& simulation, Amount_t resolution) const
-{
-    auto const& utilities = simulation.computeUtilities();
-    plotDistribution(plot, utilities, resolution);
-    //todo move this hack to history of the model
-    auto sum = std::accumulate(utilities.begin(), utilities.end(), 0.0);
-    ui->labelSumUtilities->setText("Sum: " + QString::number(sum));
-}
-
 void MainWindow::updateOverview()
 {
-    //todo generalize
-    Amount_t const q1Resolution = simulation.amounts[0] / simulation.numActors / 8;
-    plotResourceDistribution(ui->plotQ1Distribution, simulation, 0, q1Resolution);
-
-    Amount_t const q2Resolution = simulation.amounts[1] / simulation.numActors / 8;
-    plotResourceDistribution(ui->plotQ2Distribution, simulation, 1, q2Resolution);
-
-    Amount_t const utilityResolution = simulation.utility.compute(simulation.amounts[0],simulation.amounts[1])
-            /simulation.numActors / 8;
-    plotUtilityDistribution(ui->plotUtilityDistribution, simulation, utilityResolution);
+    loadHistoryMoment(simulation.history.time - 1);
 }
 
-void MainWindow::updateTime()
+void MainWindow::loadHistoryMoment(int time)
 {
-    size_t currentTimeUnit = simulation.history.time;
+    auto const momentIdx = time;
+
+    Moment const& moment = simulation.history.moments[momentIdx];
+    plotDistribution(ui->plotQ1Distribution, moment.q1Distribution);
+    plotDistribution(ui->plotQ2Distribution, moment.q2Distribution);
+    plotDistribution(ui->plotUtilityDistribution, moment.utilityDistribution);
+
+    ui->labelSumUtilities->setText("Sum: " + QString::number(simulation.history.sumUtilities[momentIdx]));
+}
+
+void MainWindow::updateTimeRange()
+{
+    size_t currentTimeUnit = simulation.history.time - 1;
     ui->sliderTime->setMaximum(currentTimeUnit);
     ui->sliderTime->setValue(currentTimeUnit);
     ui->spinBoxTime->setValue(currentTimeUnit);
@@ -370,7 +357,7 @@ void MainWindow::on_actionApply_triggered()
     plotNextSituation();
     updateOverview();
     updateProgress();
-    updateTime();
+    updateTimeRange();
 
     changeToTab(ui->tabWidget, ui->tabOverview);
 }
@@ -386,7 +373,7 @@ void MainWindow::on_actionNextRound_triggered()
         simulation.performNextRound();
         plotNextSituation();
     }
-    updateTime();
+    updateTimeRange();
     updateProgress();
     updateOverview();
 }
@@ -431,7 +418,7 @@ void MainWindow::on_actionNextTrade_triggered()
     bool const isFinished = simulation.performNextTrade();
     updateProgress();
     if (isFinished) {
-        updateTime();
+        updateTimeRange();
     }
     plotNextSituation();
 }
@@ -439,4 +426,11 @@ void MainWindow::on_actionNextTrade_triggered()
 void MainWindow::on_sliderSpeed_valueChanged(int)
 {
     timer->setInterval(calculateSpeedInterval());
+}
+
+
+void MainWindow::on_sliderTime_valueChanged(int value)
+{
+    //todo spare double load
+    loadHistoryMoment(value);
 }

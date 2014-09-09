@@ -6,6 +6,7 @@
 #include <algorithm>
 #include <numeric>
 #include <functional>
+#include <cmath>
 
 #include <iostream>
 
@@ -144,7 +145,7 @@ void Simulation::setupResources(vector<Amount_t>& resources, const Amount_t sumA
 
 bool Simulation::setup(size_t numActors, unsigned amountQ1, unsigned amountQ2, double alfa1, double alfa2) {
     if (numActors%2 != 0) return false;
-    history.time = 0; //todo setup
+    history.reset();
     amounts.resize(0);
     amounts.push_back(amountQ1);
     amounts.push_back(amountQ2);
@@ -156,6 +157,8 @@ bool Simulation::setup(size_t numActors, unsigned amountQ1, unsigned amountQ2, d
     for (size_t idx = 0; idx < amounts.size(); ++idx) {
         setupResources(resources[idx], amounts[idx], numActors);
     }
+    roundInfo.reset();
+    saveHistory();
     return true;
 }
 
@@ -166,6 +169,28 @@ Simulation::EdgeworthSituation Simulation::getNextSituation() const
     return EdgeworthSituation(*this, actor1Idx, actor2Idx, *tradeStrategy);
 }
 
+void Simulation::saveHistory()
+{
+    history.q1Traded.push_back(roundInfo.q1Traded);
+    history.q2Traded.push_back(roundInfo.q2Traded);
+
+    auto& moment = history.newMoment();
+
+    //todo generalize
+    Amount_t const q1Resolution = amounts[0] / numActors / 8;
+    moment.q1Distribution.setup(resources[0], q1Resolution);
+
+    Amount_t const q2Resolution = amounts[1] / numActors / 8;
+    moment.q2Distribution.setup(resources[1], q2Resolution);
+
+    Amount_t const utilityResolution = utility.compute(amounts[0],amounts[1])
+            /numActors / 8;
+    auto const& utilities = computeUtilities();
+    moment.utilityDistribution.setup(utilities, utilityResolution);
+    auto sumUtilities = std::accumulate(utilities.begin(), utilities.end(), 0.0);
+    history.sumUtilities.push_back(sumUtilities);
+}
+
 bool Simulation::performNextTrade()
 {
     size_t actor1Idx, actor2Idx;
@@ -173,11 +198,13 @@ bool Simulation::performNextTrade()
     auto situation = getNextSituation();
     ActorRef actor1(*this, actor1Idx);
     ActorRef actor2(*this, actor2Idx);
-    tradeStrategy->trade(situation, actor1, actor2);
+    Position traded = tradeStrategy->trade(situation, actor1, actor2);
 
+    roundInfo.recordTrade(traded);
     bool const progressFinished = progress.advance();
     if (progressFinished) {
-        history.roundFinished();
+        saveHistory();
+        roundInfo.reset();
     }
     return progressFinished;
 }
@@ -197,6 +224,7 @@ ResourceDataPair sampleFunction(std::function<double (double)> func, Amount_t ra
 
 vector<Amount_t> Simulation::computeUtilities() const {
     vector<Amount_t> utilities;
+    utilities.reserve(numActors);
     for (size_t actorIdx = 0; actorIdx < numActors; ++actorIdx) {
         ActorConstRef actor(*this, actorIdx);
         utilities.push_back(utility.compute(actor.q1, actor.q2));
@@ -207,8 +235,8 @@ vector<Amount_t> Simulation::computeUtilities() const {
 Distribution::Distribution(const vector<Amount_t>& subject, Amount_t resolution)
     : subject(subject)
     , resolution(resolution)
-    , max(*std::max_element(subject.begin(), subject.end()))
-    , numBuckets(static_cast<size_t>(ceil(max/resolution)))
+    , maxSubject(*std::max_element(subject.begin(), subject.end()))
+    , numBuckets(static_cast<size_t>(ceil(maxSubject/resolution)))
 {
     data.resize(numBuckets);
 
@@ -288,11 +316,57 @@ bool isPointInTriangle(const Position& p0, const Position& p1, const Position& p
             0.0 <= c && c <= 1.0;
 }
 
-void AbstractTradeStrategy::trade(Simulation::EdgeworthSituation& situation,
+Position AbstractTradeStrategy::trade(Simulation::EdgeworthSituation& situation,
                                       Simulation::ActorRef& actor1, Simulation::ActorRef& actor2)
 {
+    Position traded { actor1.q1, actor1.q2 };
+    traded = traded - situation.result;
     actor1.q1 = situation.result.q1;
     actor1.q2 = situation.result.q2;
     actor2.q1 = situation.q1Sum - actor1.q1;
     actor2.q2 = situation.q2Sum - actor1.q2;
+    return traded;
+}
+
+
+History::History(): time(0) {}
+
+Moment& History::newMoment()
+{
+    ++time;
+    moments.push_back(Moment());
+    return moments.back();
+}
+
+void History::reset()
+{
+    time = 0;
+    moments.resize(0);
+    q1Traded.resize(0);
+    q2Traded.resize(0);
+    sumUtilities.resize(0);
+}
+
+
+void HeavyDistribution::setup(const vector<Amount_t> &subject, Amount_t resolution)
+{
+    Distribution distribution(subject, resolution);
+    this->data = std::move(distribution.data);
+    this->resolution = distribution.resolution;
+    this->maxSubject = distribution.maxSubject;
+    this->maxNum = *std::max_element(data.y.begin(), data.y.end());
+    this->numBuckets = distribution.numBuckets;
+}
+
+
+void Simulation::RoundInfo::reset()
+{
+    q1Traded = 0;
+    q2Traded = 0;
+}
+
+void Simulation::RoundInfo::recordTrade(Position traded)
+{
+    q1Traded += std::abs(traded.q1);
+    q2Traded += std::abs(traded.q2);
 }

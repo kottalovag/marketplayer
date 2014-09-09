@@ -30,14 +30,15 @@ private:
 
     void plotEdgeworth(QCustomPlot* plot, Simulation::EdgeworthSituation const& situation);
 
-    static void plotDistribution(QCustomPlot* plot, vector<Amount_t> const& subject, Amount_t resolution);
+    static void plotDistribution(QCustomPlot* plot, const HeavyDistribution &distribution);
 
     void plotResourceDistribution(QCustomPlot* plot, const Simulation& simulation, size_t resourceIdx, Amount_t resolution) const;
     void plotUtilityDistribution(QCustomPlot* plot, const Simulation& simulation, Amount_t resolution) const;
 
     void cleanPlotData(QCustomPlot* plot);
     void updateOverview();
-    void updateTime();
+    void loadHistoryMoment(int time);
+    void updateTimeRange();
     void plotNextSituation();
     void updateProgress();
 
@@ -57,6 +58,8 @@ private slots:
     void on_actionNextRound_triggered();
 
     void on_sliderSpeed_valueChanged(int value);
+
+    void on_sliderTime_valueChanged(int value);
 
 private:
     Ui::MainWindow *ui;
