@@ -20,7 +20,7 @@
 #include "qcustomplot.h"
 #include "model.h"
 
-URNG urng;
+URNG globalUrng;
 
 using std::make_tuple;
 
@@ -50,14 +50,14 @@ bool ResourceToleranceEquality::operator()(const Amount_t& x, const Amount_t& y)
 }
 
 Simulation::EdgeworthSituation::EdgeworthSituation(const Simulation& simulation, const size_t actor1Idx, const size_t actor2Idx,
-        AbstractOfferStrategy& offerStrategy, AbstractAcceptanceStrategy& acceptanceStrategy)
+        AbstractOfferStrategy& offerStrategy, AbstractAcceptanceStrategy& acceptanceStrategy, URNG& rng)
     : actor1(simulation, actor1Idx)
     , actor2(simulation, actor2Idx)
     , curve1(simulation.utility, actor1.q1, actor1.q2)
     , curve2(simulation.utility, actor2.q1, actor2.q2)
     , q1Sum(actor1.q1 + actor2.q1)
     , q2Sum(actor1.q2 + actor2.q2)
-    , result(offerStrategy.propose(*this))
+    , result(offerStrategy.propose(*this, rng))
     , successful(acceptanceStrategy.consider(*this))
 {
 }
@@ -117,10 +117,10 @@ Amount_t Simulation::EdgeworthSituation::calculateNewUtilityActor2() const
     return curve2.utility.compute(actor2NewPos.q1, actor2NewPos.q2);
 }
 
-void Simulation::Progress::setup(size_t numActors) {
+void Simulation::Progress::setup(size_t numActors, URNG& rng) {
     permutation.resize(numActors);
     std::generate(permutation.begin(), permutation.end(), IndexNumber());
-    shufflePermutation();
+    shufflePermutation(rng);
     actIdx = 0;
     restarted = false;
 }
@@ -130,21 +130,21 @@ tuple<size_t, size_t> Simulation::Progress::getCurrentPair() const
     return make_tuple(permutation[actIdx], permutation[actIdx+1]);
 }
 
-bool Simulation::Progress::advance()
+bool Simulation::Progress::advance(URNG& rng)
 {
     restarted = false;
     actIdx += 2;
     bool const finished = isFinished();
     if (finished) {
-        shufflePermutation();
+        shufflePermutation(rng);
         actIdx = 0;
         restarted = true;
     }
     return finished;
 }
 
-void Simulation::Progress::shufflePermutation() {
-    std::shuffle(permutation.begin(), permutation.end(), urng);
+void Simulation::Progress::shufflePermutation(URNG &rng) {
+    std::shuffle(permutation.begin(), permutation.end(), rng);
 }
 
 bool Simulation::Progress::isFinished() const
@@ -152,21 +152,26 @@ bool Simulation::Progress::isFinished() const
     return actIdx == permutation.size();
 }
 
-void Simulation::setupResources(vector<Amount_t>& resources, const Amount_t sumAmount, const size_t numActors) {
-    resources.resize(numActors);
-    std::generate_n(resources.begin(), numActors, [](){
+void Simulation::setupResources(vector<Amount_t>& targetResources, const Amount_t sumAmount, const size_t numActors) {
+    targetResources.resize(numActors);
+    std::generate_n(targetResources.begin(), numActors, [this](){
         std::uniform_real_distribution<Amount_t> uniformDistribution(0.0, 1.0);
-        return uniformDistribution(urng);
+        return uniformDistribution(innerUrng);
     });
-    Amount_t const sumRandom = std::accumulate(resources.begin(), resources.end(), 0.0);
+    Amount_t const sumRandom = std::accumulate(targetResources.begin(), targetResources.end(), 0.0);
     double const ratio = sumAmount/sumRandom;
-    for (auto& element : resources) {
+    for (auto& element : targetResources) {
         element *= ratio;
     }
 }
 
-bool Simulation::setup(size_t numActors, unsigned amountQ1, unsigned amountQ2, double alfa1, double alfa2) {
+bool Simulation::setup(int seed, size_t numActors, unsigned amountQ1, unsigned amountQ2, double alfa1, double alfa2) {
     if (numActors%2 != 0) return false;
+    innerUrng.seed(seed);
+    for (int i = 0; i < 10; ++i) {
+        cout << innerUrng() << ", ";
+    }
+    cout << endl;
     history.reset();
     amounts.resize(0);
     amounts.push_back(amountQ1);
@@ -175,7 +180,7 @@ bool Simulation::setup(size_t numActors, unsigned amountQ1, unsigned amountQ2, d
     this->numActors = numActors;
     utility.alfa1 = alfa1;
     utility.alfa2 = alfa2;
-    progress.setup(numActors);
+    progress.setup(numActors, innerUrng);
     for (size_t idx = 0; idx < amounts.size(); ++idx) {
         setupResources(resources[idx], amounts[idx], numActors);
     }
@@ -189,7 +194,7 @@ Simulation::EdgeworthSituation Simulation::getNextSituation() const
 {
     size_t actor1Idx, actor2Idx;
     std::tie(actor1Idx, actor2Idx) = progress.getCurrentPair();
-    return EdgeworthSituation(*this, actor1Idx, actor2Idx, *offerStrategy, *acceptanceStrategy);
+    return EdgeworthSituation(*this, actor1Idx, actor2Idx, *offerStrategy, *acceptanceStrategy, innerUrng);
 }
 
 Simulation::EdgeworthSituation const& Simulation::provideNextSituation()
@@ -197,7 +202,8 @@ Simulation::EdgeworthSituation const& Simulation::provideNextSituation()
     if (!previewedSituation.get()) {
         size_t actor1Idx, actor2Idx;
         std::tie(actor1Idx, actor2Idx) = progress.getCurrentPair();
-        previewedSituation.reset(new EdgeworthSituation(*this, actor1Idx, actor2Idx, *offerStrategy, *acceptanceStrategy));
+        previewedSituation.reset(new EdgeworthSituation(*this, actor1Idx, actor2Idx,
+                                                        *offerStrategy, *acceptanceStrategy, innerUrng));
     }
     return *previewedSituation;
 }
@@ -266,7 +272,7 @@ bool Simulation::performNextTrade()
         roundInfo.recordTrade(traded);
     }
     previewedSituation.reset();
-    bool const progressFinished = progress.advance();
+    bool const progressFinished = progress.advance(innerUrng);
     if (progressFinished) {
         saveHistory();
         roundInfo.reset();
@@ -277,6 +283,11 @@ bool Simulation::performNextTrade()
 void Simulation::performNextRound()
 {
     while (!performNextTrade());
+    cout << "round: ";
+    for (int i = 0; i < 5; ++i) {
+        cout << innerUrng() << ", ";
+    }
+    cout << endl;
 }
 
 ResourceDataPair sampleFunction(std::function<double (double)> func, Amount_t rangeStart, Amount_t rangeFinish, Amount_t resolution){
@@ -318,24 +329,24 @@ Distribution::Distribution(const vector<Amount_t>& subject, Amount_t resolution)
     }
 }
 
-Position OppositeParetoOfferStrategy::propose(Simulation::EdgeworthSituation const& situation) const
+Position OppositeParetoOfferStrategy::propose(Simulation::EdgeworthSituation const& situation, URNG&) const
 {
     Position const p2 = situation.calculateCurve2ParetoIntersection();
     //debugShowPoint(p2);
     return p2;
 }
 
-Position RandomParetoOfferStrategy::propose(Simulation::EdgeworthSituation const& situation) const
+Position RandomParetoOfferStrategy::propose(Simulation::EdgeworthSituation const& situation, URNG& rng) const
 {
     Position const p2 = situation.calculateCurve2ParetoIntersection();
     Position const p1 = situation.calculateCurve1ParetoIntersection();
-    double const factor = std::uniform_real_distribution<double>(0.0, 1.0)(urng);
+    double const factor = std::uniform_real_distribution<double>(0.0, 1.0)(rng);
     auto const result = p1 + (p2 - p1) * factor;
     //debugShowPoint(result);
     return result;
 }
 
-Position RandomTriangleOfferStrategy::propose(Simulation::EdgeworthSituation const& situation) const
+Position RandomTriangleOfferStrategy::propose(Simulation::EdgeworthSituation const& situation, URNG& rng) const
 {
     Position const p0 = situation.getFixPoint();
     Position const p1 = situation.calculateCurve1ParetoIntersection();
@@ -346,8 +357,8 @@ Position RandomTriangleOfferStrategy::propose(Simulation::EdgeworthSituation con
     //we pick a point as if in a paralelogram for sake of uniformity
     auto const v01 = (p1 - p0);
     auto const v02 = (p2 - p0);
-    double const factor1 = udist(urng);
-    double const factor2 = udist(urng);
+    double const factor1 = udist(rng);
+    double const factor2 = udist(rng);
     Position px = p0 + v01*factor1 + v02*factor2;
 
     //if the point falls in the wrong half
@@ -382,7 +393,7 @@ bool isPointInTriangle(const Position& p0, const Position& p1, const Position& p
             0.0 <= c && c <= 1.0;
 }
 
-bool AlwaysAcceptanceStrategy::consider(Simulation::EdgeworthSituation const& situation) const
+bool AlwaysAcceptanceStrategy::consider(Simulation::EdgeworthSituation const&) const
 {
     return true;
 }

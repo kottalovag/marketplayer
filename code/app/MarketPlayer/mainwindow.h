@@ -62,6 +62,8 @@ private slots:
 
     void on_sliderTime_valueChanged(int value);
 
+    void on_pushButtonRegenerateSeed_clicked();
+
 private:
     Ui::MainWindow *ui;
     Simulation simulation;
@@ -69,4 +71,3 @@ private:
 };
 
 #endif // MAINWINDOW_H
-

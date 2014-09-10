@@ -16,7 +16,7 @@ MainWindow::MainWindow(QWidget *parent) :
     QMainWindow(parent),
     ui(new Ui::MainWindow)
 {
-    urng.seed(time(0));
+    globalUrng.seed(time(0));
     ui->setupUi(this);
 
     setupControlsStartup();
@@ -72,6 +72,9 @@ void MainWindow::setupControlsStartup()
     ui->lineEditAlfa2->setText("0.5");
     ui->lineEditAlfa2->setValidator(alfaValidator);
     ui->lineEditAlfa2->setEnabled(false); //TODO resolve
+
+    ui->lineEditSeed->setValidator(new QIntValidator(0,std::numeric_limits<unsigned>::max(), this));
+    on_pushButtonRegenerateSeed_clicked();
 
     ui->radioButtonOppositePareto->setEnabled(true);
     ui->radioButtonWantAlways->setEnabled(true);
@@ -383,7 +386,8 @@ void MainWindow::on_actionApply_triggered()
 {
     on_actionPause_triggered();
 
-    simulation.setup(ui->lineEditNumActors->text().toInt(),
+    simulation.setup(ui->lineEditSeed->text().toUInt(),
+                     ui->lineEditNumActors->text().toInt(),
                      ui->lineEditSumQ1->text().toDouble(),
                      ui->lineEditSumQ2->text().toDouble(),
                      ui->lineEditAlfa1->text().toDouble(),
@@ -490,4 +494,9 @@ void MainWindow::on_sliderTime_valueChanged(int value)
 {
     //todo spare double load
     loadHistoryMoment(value);
+}
+
+void MainWindow::on_pushButtonRegenerateSeed_clicked()
+{
+    ui->lineEditSeed->setText(QString::number(globalUrng()));
 }

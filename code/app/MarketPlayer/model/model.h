@@ -22,7 +22,7 @@
 #include "qcustomplot.h"
 
 typedef std::mt19937 URNG;
-extern URNG urng;
+extern URNG globalUrng;
 
 using std::tuple;
 using std::unique_ptr;
@@ -196,7 +196,7 @@ struct Simulation
         bool const successful;
 
         EdgeworthSituation(Simulation const& simulation, size_t const actor1Idx, size_t const actor2Idx,
-                           AbstractOfferStrategy& offerStrategy, AbstractAcceptanceStrategy &acceptanceStrategy);
+                           AbstractOfferStrategy& offerStrategy, AbstractAcceptanceStrategy &acceptanceStrategy, URNG &rng);
         std::function<Amount_t(Amount_t)> getCurve1Function() const;
         std::function<Amount_t(Amount_t)> getCurve2Function() const;
         std::function<Amount_t(Amount_t)> getParetoSetFunction() const;
@@ -218,9 +218,9 @@ struct Simulation
 
     struct Progress
     {
-        void setup(size_t numActor);
+        void setup(size_t numActor, URNG &rng);
         tuple<size_t, size_t> getCurrentPair() const;
-        bool advance();
+        bool advance(URNG &rng);
         size_t getDone() const { return actIdx / 2; }
         size_t getNum() const { return permutation.size() / 2; }
         bool wasRestarted() const { return restarted; }
@@ -230,7 +230,7 @@ struct Simulation
         bool restarted;
 
     private:
-        void shufflePermutation();
+        void shufflePermutation(URNG& rng);
 
         vector<size_t> permutation;
         size_t actIdx;
@@ -243,6 +243,7 @@ struct Simulation
         Amount_t q1Traded, q2Traded, numSuccessful;
     };
 
+    mutable URNG innerUrng;
     History history;
     Progress progress;
     Utility utility;
@@ -255,8 +256,8 @@ struct Simulation
     unique_ptr<AbstractOfferStrategy> offerStrategy;
     unique_ptr<AbstractAcceptanceStrategy> acceptanceStrategy;
 
-    static void setupResources(vector<Amount_t>& resources, Amount_t const sumAmount, size_t const numActors);
-    bool setup(size_t numActors, unsigned amountQ1, unsigned amountQ2, double alfa1, double alfa2);
+    void setupResources(vector<Amount_t>& targetResources, Amount_t const sumAmount, size_t const numActors);
+    bool setup(int seed, size_t numActors, unsigned amountQ1, unsigned amountQ2, double alfa1, double alfa2);
     bool performNextTrade();
     void performNextRound();
     const EdgeworthSituation &provideNextSituation();
@@ -273,19 +274,19 @@ private:
 
 struct AbstractOfferStrategy
 {
-    virtual Position propose(Simulation::EdgeworthSituation const& situation) const = 0;
+    virtual Position propose(Simulation::EdgeworthSituation const& situation, URNG& rng) const = 0;
     virtual ~AbstractOfferStrategy(){}
 };
 
 struct OppositeParetoOfferStrategy: AbstractOfferStrategy
 {
-    virtual Position propose(Simulation::EdgeworthSituation const& situation) const override;
+    virtual Position propose(Simulation::EdgeworthSituation const& situation, URNG& rng) const override;
     virtual ~OppositeParetoOfferStrategy() {}
 };
 
 struct RandomParetoOfferStrategy: AbstractOfferStrategy
 {
-    virtual Position propose(Simulation::EdgeworthSituation const& situation) const override;
+    virtual Position propose(Simulation::EdgeworthSituation const& situation, URNG &rng) const override;
     virtual ~RandomParetoOfferStrategy() {}
 };
 
@@ -293,7 +294,7 @@ bool isPointInTriangle(Position const& p0, Position const& p1, Position const& p
 
 struct RandomTriangleOfferStrategy: AbstractOfferStrategy
 {
-    virtual Position propose(Simulation::EdgeworthSituation const& situation) const override;
+    virtual Position propose(Simulation::EdgeworthSituation const& situation, URNG& rng) const override;
     virtual ~RandomTriangleOfferStrategy() {}
 };
 
