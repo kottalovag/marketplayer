@@ -6,6 +6,7 @@
 
 #include <iostream>
 #include <time.h>
+#include <QFileDialog>
 
 using std::cout;
 using std::endl;
@@ -507,4 +508,96 @@ void MainWindow::on_sliderTime_valueChanged(int value)
 void MainWindow::on_pushButtonRegenerateSeed_clicked()
 {
     ui->lineEditSeed->setText(QString::number(globalUrng()));
+}
+
+QString appGroupKey = "application";
+QString configVersionKey = "config_version";
+QString currentConfigVersion = "1.0";
+
+QString simulationGroupKey = "simulation";
+QString q1SumKey = "q1_sum";
+QString q2SumKey = "q2_sum";
+QString numActorsKey = "num_actors";
+QString randomSeedKey = "random_seed";
+
+QString offerStrategyKey = "offer_strategy";
+QString oppositeParetoValue = "opposite pareto";
+QString randomParetoValue = "random pareto";
+QString randomTriangleValue = "random triangle";
+
+QString acceptanceStrategyKey = "acceptance_strategy";
+QString alwaysValue = "always";
+QString higherGainValue = "want higher gain";
+QString higherProportionValue = "want higher proportion";
+
+void MainWindow::on_actionSaveConfiguration_triggered()
+{
+    QString fileName = QFileDialog::getSaveFileName(this, "Save configuration", "", "(*ini).");
+    if (fileName != "") {
+        if (!fileName.endsWith(".ini")) {
+            fileName += ".ini";
+        }
+        QSettings settings(fileName, QSettings::IniFormat);
+        settings.beginGroup(appGroupKey);
+        settings.setValue(configVersionKey, "1.0");
+        settings.endGroup();
+
+        settings.beginGroup(simulationGroupKey);
+        settings.setValue(q1SumKey, ui->lineEditSumQ1->text());
+        settings.setValue(q2SumKey, ui->lineEditSumQ2->text());
+        settings.setValue(numActorsKey, ui->lineEditNumActors->text());
+        settings.setValue(randomSeedKey, ui->lineEditSeed->text());
+
+        QString offerStrategy = "";
+        if (ui->radioButtonOppositePareto->isChecked()) {
+            offerStrategy = oppositeParetoValue;
+        } else if (ui->radioButtonRandomPareto->isChecked()) {
+            offerStrategy = randomParetoValue;
+        } else if (ui->radioButtonRandomTriangle->isChecked()) {
+            offerStrategy = randomTriangleValue;
+        }
+        settings.setValue(offerStrategyKey, offerStrategy);
+
+        QString acceptanceStrategy = "";
+        if (ui->radioButtonWantAlways->isChecked()) {
+            acceptanceStrategy = alwaysValue;
+        } else if (ui->radioButtonWantHigherGain->isChecked()) {
+            acceptanceStrategy = higherGainValue;
+        } else if (ui->radioButtonWantHigherProportion->isChecked()) {
+            acceptanceStrategy = higherProportionValue;
+        }
+        settings.setValue(acceptanceStrategyKey, acceptanceStrategy);
+        settings.endGroup();
+    }
+}
+
+void MainWindow::on_actionLoadConfiguration_triggered()
+{
+    QString fileName = QFileDialog::getOpenFileName(this, "Load configuration", "", "(*ini).");
+    if (fileName != "") {
+        QSettings settings(fileName, QSettings::IniFormat);
+        settings.beginGroup(simulationGroupKey);
+        ui->lineEditSumQ1->setText(settings.value(q1SumKey).toString());
+        ui->lineEditSumQ2->setText(settings.value(q2SumKey).toString());
+        ui->lineEditNumActors->setText(settings.value(numActorsKey).toString());
+        ui->lineEditSeed->setText(settings.value(randomSeedKey).toString());
+
+        QString offerStrategy = settings.value(offerStrategyKey).toString();
+        if (offerStrategy == oppositeParetoValue) {
+            ui->radioButtonOppositePareto->setChecked(true);
+        } else if (offerStrategy == randomParetoValue) {
+            ui->radioButtonRandomPareto->setChecked(true);
+        } else if (offerStrategy == randomTriangleValue) {
+            ui->radioButtonRandomTriangle->setChecked(true);
+        }
+
+        QString acceptanceStrategy = settings.value(acceptanceStrategyKey).toString();
+        if (acceptanceStrategy == alwaysValue) {
+            ui->radioButtonWantAlways->setChecked(true);
+        } else if (acceptanceStrategy == higherGainValue) {
+            ui->radioButtonWantHigherGain->setChecked(true);
+        } else if (acceptanceStrategy == higherProportionValue) {
+            ui->radioButtonWantHigherProportion->setChecked(true);
+        }
+    }
 }

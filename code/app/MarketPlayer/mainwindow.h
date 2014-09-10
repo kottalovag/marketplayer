@@ -66,6 +66,10 @@ private slots:
 
     void on_pushButtonRegenerateSeed_clicked();
 
+    void on_actionSaveConfiguration_triggered();
+
+    void on_actionLoadConfiguration_triggered();
+
 private:
     Ui::MainWindow *ui;
     Simulation simulation;
@@ -73,3 +77,7 @@ private:
 };
 
 #endif // MAINWINDOW_H
+
+
+
+
