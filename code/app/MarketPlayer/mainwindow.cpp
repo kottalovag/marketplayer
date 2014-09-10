@@ -26,10 +26,10 @@ MainWindow::MainWindow(QWidget *parent) :
     setupDistributionPlot(ui->plotQ2Distribution, "Q2", "Actors");
     setupDistributionPlot(ui->plotUtilityDistribution, "Utility", "Actors");
     setupDistributionPlot(ui->plotWealthDistribution, "Wealth", "Actors");
-    setupDataTimePlot(ui->plotQ1Traded, "Q1 traded");
-    setupDataTimePlot(ui->plotQ2Traded, "Q2 traded");
+    setupDataTimePlotWithPercentage(ui->plotQ1Traded, "Q1 traded");
+    setupDataTimePlotWithPercentage(ui->plotQ2Traded, "Q2 traded");
     setupDataTimePlot(ui->plotSumUtility, "Sum of utilities");
-    setupDataTimePlot(ui->plotNumSuccessfulTrades, "Successful trades");
+    setupDataTimePlotWithPercentage(ui->plotNumSuccessfulTrades, "Successful trades");
 
     debugShowPoint = [this](Position p){
         auto debugGraph = ui->plotEdgeworthBox->graph(5);
@@ -222,6 +222,13 @@ void MainWindow::setupDataTimePlot(QCustomPlot *plot, QString yLabel)
     currentGraph->setPen(currentPen);
 }
 
+void MainWindow::setupDataTimePlotWithPercentage(QCustomPlot *plot, QString yLabel)
+{
+    setupDataTimePlot(plot, yLabel);
+    plot->yAxis2->setVisible(true);
+    plot->yAxis2->setLabel("%");
+}
+
 void MainWindow::plotEdgeworth(QCustomPlot* plot, Simulation::EdgeworthSituation const& situation) {
     cleanPlotData(plot);
 
@@ -270,20 +277,12 @@ void MainWindow::plotEdgeworth(QCustomPlot* plot, Simulation::EdgeworthSituation
     plot->replot();
 }
 
-
-
 void MainWindow::setupDistributionPlot(QCustomPlot* plot, QString xLabel, QString yLabel)
 {
     auto bars = new QCPBars(plot->xAxis, plot->yAxis);
     plot->addPlottable(bars);
     plot->xAxis->setLabel(xLabel);
     plot->yAxis->setLabel(yLabel);
-
-    /*QBrush brush;
-    color.setAlpha(brush.color().alpha());
-    brush.setColor(color);
-    brush.setStyle(Qt::SolidPattern);
-    bars->setBrush(brush);*/
 }
 
 void MainWindow::plotDistribution(QCustomPlot* plot, HeavyDistribution const& distribution)
@@ -304,11 +303,20 @@ void MainWindow::plotDataTime(QCustomPlot* plot, DataTimePair const& dataTime, i
 {
     plot->xAxis->setRange(0.0, dataTime.data.x.last() + 1);
     plot->yAxis->setRange(0.0, dataTime.max * 1.1);
+
     plot->graph(0)->setData(dataTime.data.x, dataTime.data.y);
 
     plot->graph(1)->clearData();
     plot->graph(1)->addData(currentIdx, dataTime[currentIdx]);
     plot->replot();
+}
+
+void MainWindow::plotDataTimeAndPercentage(QCustomPlot* plot, DataTimePair const& dataTime, int currentIdx, Amount_t max)
+{
+    plotDataTime(plot, dataTime, currentIdx);
+
+    Amount_t percentageRangeMax = dataTime.max / max * 100;
+    plot->yAxis2->setRange(0.0, percentageRangeMax);
 }
 
 void MainWindow::updateOverview()
@@ -331,10 +339,10 @@ void MainWindow::loadHistoryMoment(int time)
     ui->labelQ2Traded->setText("Traded: " + QString::number(history.q2Traded[momentIdx]));
     ui->labelNumSuccessful->setText("Successful: " + QString::number(history.numSuccessful[momentIdx]));
 
-    plotDataTime(ui->plotQ1Traded, history.q1Traded, time);
-    plotDataTime(ui->plotQ2Traded, history.q2Traded, time);
+    plotDataTimeAndPercentage(ui->plotQ1Traded, history.q1Traded, time, simulation.amounts[0]);
+    plotDataTimeAndPercentage(ui->plotQ2Traded, history.q2Traded, time, simulation.amounts[1]);
     plotDataTime(ui->plotSumUtility, history.sumUtilities, time);
-    plotDataTime(ui->plotNumSuccessfulTrades, history.numSuccessful, time);
+    plotDataTimeAndPercentage(ui->plotNumSuccessfulTrades, history.numSuccessful, time, simulation.numActors/2);
 }
 
 void MainWindow::updateTimeRange()

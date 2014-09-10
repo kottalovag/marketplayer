@@ -168,10 +168,6 @@ void Simulation::setupResources(vector<Amount_t>& targetResources, const Amount_
 bool Simulation::setup(int seed, size_t numActors, unsigned amountQ1, unsigned amountQ2, double alfa1, double alfa2) {
     if (numActors%2 != 0) return false;
     innerUrng.seed(seed);
-    for (int i = 0; i < 10; ++i) {
-        cout << innerUrng() << ", ";
-    }
-    cout << endl;
     history.reset();
     amounts.resize(0);
     amounts.push_back(amountQ1);
@@ -283,11 +279,6 @@ bool Simulation::performNextTrade()
 void Simulation::performNextRound()
 {
     while (!performNextTrade());
-    cout << "round: ";
-    for (int i = 0; i < 5; ++i) {
-        cout << innerUrng() << ", ";
-    }
-    cout << endl;
 }
 
 ResourceDataPair sampleFunction(std::function<double (double)> func, Amount_t rangeStart, Amount_t rangeFinish, Amount_t resolution){
