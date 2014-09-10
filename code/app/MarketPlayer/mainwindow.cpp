@@ -344,7 +344,7 @@ void MainWindow::updateTimeRange()
 
 void MainWindow::plotNextSituation()
 {
-    Simulation::EdgeworthSituation nextSituation = simulation.getNextSituation();
+    Simulation::EdgeworthSituation const& nextSituation = simulation.provideNextSituation();
     plotEdgeworth(ui->plotEdgeworthBox, nextSituation);
 }
 

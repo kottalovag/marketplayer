@@ -259,12 +259,16 @@ struct Simulation
     bool setup(size_t numActors, unsigned amountQ1, unsigned amountQ2, double alfa1, double alfa2);
     bool performNextTrade();
     void performNextRound();
-    EdgeworthSituation getNextSituation() const;
+    const EdgeworthSituation &provideNextSituation();
     Position trade(const EdgeworthSituation &situation, ActorRef& actor1, ActorRef& actor2);
 
     Amount_t computeWealth(Position position) const;
     vector<Amount_t> computeActors(std::function<Amount_t(ActorConstRef const&)> evaluatorFn) const;
     void saveHistory();
+
+private:
+    unique_ptr<EdgeworthSituation> previewedSituation;
+    EdgeworthSituation getNextSituation() const;
 };
 
 struct AbstractOfferStrategy
@@ -297,6 +301,8 @@ struct AbstractAcceptanceStrategy
 {
     virtual bool consider(Simulation::EdgeworthSituation const& situation) const = 0;
     virtual ~AbstractAcceptanceStrategy(){}
+    bool considerGeneral(const Simulation::EdgeworthSituation &situation,
+                         std::function<Amount_t(Amount_t const&, Amount_t const&)> evaluate) const;
 };
 
 struct AlwaysAcceptanceStrategy: AbstractAcceptanceStrategy

@@ -192,6 +192,16 @@ Simulation::EdgeworthSituation Simulation::getNextSituation() const
     return EdgeworthSituation(*this, actor1Idx, actor2Idx, *offerStrategy, *acceptanceStrategy);
 }
 
+Simulation::EdgeworthSituation const& Simulation::provideNextSituation()
+{
+    if (!previewedSituation.get()) {
+        size_t actor1Idx, actor2Idx;
+        std::tie(actor1Idx, actor2Idx) = progress.getCurrentPair();
+        previewedSituation.reset(new EdgeworthSituation(*this, actor1Idx, actor2Idx, *offerStrategy, *acceptanceStrategy));
+    }
+    return *previewedSituation;
+}
+
 Position Simulation::trade(EdgeworthSituation const& situation, ActorRef& actor1, ActorRef& actor2)
 {
     Position traded { actor1.q1, actor1.q2 };
@@ -247,13 +257,15 @@ bool Simulation::performNextTrade()
 {
     size_t actor1Idx, actor2Idx;
     std::tie(actor1Idx, actor2Idx) = progress.getCurrentPair();
-    auto situation = getNextSituation();
+    EdgeworthSituation const& situation = previewedSituation.get() ?
+                *previewedSituation : getNextSituation();
     if (situation.successful) {
         ActorRef actor1(*this, actor1Idx);
         ActorRef actor2(*this, actor2Idx);
         Position traded = trade(situation, actor1, actor2);
         roundInfo.recordTrade(traded);
     }
+    previewedSituation.reset();
     bool const progressFinished = progress.advance();
     if (progressFinished) {
         saveHistory();
@@ -375,26 +387,32 @@ bool AlwaysAcceptanceStrategy::consider(Simulation::EdgeworthSituation const& si
     return true;
 }
 
-bool HigherGainAcceptanceStrategy::consider(Simulation::EdgeworthSituation const& situation) const
+bool AbstractAcceptanceStrategy::considerGeneral(Simulation::EdgeworthSituation const& situation,
+                                          std::function<Amount_t(const Amount_t &, const Amount_t &)> evaluate) const
 {
     auto const actor1Utility = situation.calculateOriginalUtility(situation.actor1);
     auto const actor2Utility = situation.calculateOriginalUtility(situation.actor2);
     auto const actor1NewUtility = situation.calculateNewUtilityActor1();
     auto const actor2NewUtility = situation.calculateNewUtilityActor2();
-    auto const actor1Gain = actor1NewUtility - actor1Utility;
-    auto const actor2Gain = actor2NewUtility - actor2Utility;
+    auto const actor1Gain = evaluate(actor1NewUtility, actor1Utility);
+    auto const actor2Gain = evaluate(actor2NewUtility, actor2Utility);
     return actor1Gain <= actor2Gain;
+}
+
+bool HigherGainAcceptanceStrategy::consider(Simulation::EdgeworthSituation const& situation) const
+{
+    return considerGeneral(situation,
+                           [](Amount_t const& newUtility, Amount_t const& originalUtility) {
+        return newUtility - originalUtility;
+    });
 }
 
 bool HigherProportionAcceptanceStrategy::consider(Simulation::EdgeworthSituation const& situation) const
 {
-    auto const actor1Utility = situation.calculateOriginalUtility(situation.actor1);
-    auto const actor2Utility = situation.calculateOriginalUtility(situation.actor2);
-    auto const actor1NewUtility = situation.calculateNewUtilityActor1();
-    auto const actor2NewUtility = situation.calculateNewUtilityActor2();
-    auto const actor1Proportion = actor1NewUtility / actor1Utility;
-    auto const actor2Proportion = actor2NewUtility / actor2Utility;
-    return actor1Proportion <= actor2Proportion;
+    return considerGeneral(situation,
+                           [](Amount_t const& newUtility, Amount_t const& originalUtility) {
+        return newUtility / originalUtility;
+    });
 }
 
 History::History(): time(0) {}
@@ -416,7 +434,6 @@ void History::reset()
     moments.resize(0);
 }
 
-
 void HeavyDistribution::setup(const vector<Amount_t> &subject, Amount_t resolution)
 {
     Distribution distribution(subject, resolution);
@@ -426,7 +443,6 @@ void HeavyDistribution::setup(const vector<Amount_t> &subject, Amount_t resoluti
     this->maxNum = *std::max_element(data.y.begin(), data.y.end());
     this->numBuckets = distribution.numBuckets;
 }
-
 
 void Simulation::RoundInfo::reset()
 {
@@ -441,4 +457,3 @@ void Simulation::RoundInfo::recordTrade(Position traded)
     q2Traded += std::abs(traded.q2);
     numSuccessful += 1;
 }
-
