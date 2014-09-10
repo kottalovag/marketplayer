@@ -152,7 +152,7 @@ struct HeavyDistribution
 
 struct Moment
 {
-    HeavyDistribution q1Distribution, q2Distribution, utilityDistribution;
+    HeavyDistribution q1Distribution, q2Distribution, utilityDistribution, wealthDistribution;
 };
 
 struct History
@@ -160,12 +160,13 @@ struct History
     History();
     size_t time;
     vector<Moment> moments;
-    DataTimePair q1Traded, q2Traded, sumUtilities;
+    DataTimePair q1Traded, q2Traded, numSuccessful, sumUtilities;
     Moment& newMoment();
     void reset();
 };
 
-struct AbstractTradeStrategy;
+struct AbstractOfferStrategy;
+struct AbstractAcceptanceStrategy;
 
 struct Simulation
 {
@@ -192,9 +193,10 @@ struct Simulation
         IndifferenceCurve const curve1, curve2;
         Amount_t const q1Sum, q2Sum;
         Position const result;
+        bool const successful;
 
         EdgeworthSituation(Simulation const& simulation, size_t const actor1Idx, size_t const actor2Idx,
-                           AbstractTradeStrategy& tradeStrategy);
+                           AbstractOfferStrategy& offerStrategy, AbstractAcceptanceStrategy &acceptanceStrategy);
         std::function<Amount_t(Amount_t)> getCurve1Function() const;
         std::function<Amount_t(Amount_t)> getCurve2Function() const;
         std::function<Amount_t(Amount_t)> getParetoSetFunction() const;
@@ -205,6 +207,10 @@ struct Simulation
 
         Position calculateCurve1ParetoIntersection() const;
         Position calculateCurve2ParetoIntersection() const;
+        Position calculateActor2Result() const;
+        Amount_t calculateOriginalUtility(ActorConstRef const& actor) const;
+        Amount_t calculateNewUtilityActor1() const;
+        Amount_t calculateNewUtilityActor2() const;
 
     private:
         Amount_t calculateParetoIntersectionQ1(IndifferenceCurve const& curve) const;
@@ -234,7 +240,7 @@ struct Simulation
     {
         void reset();
         void recordTrade(Position traded);
-        Amount_t q1Traded, q2Traded;
+        Amount_t q1Traded, q2Traded, numSuccessful;
     };
 
     History history;
@@ -244,43 +250,69 @@ struct Simulation
     size_t numActors;
     vector<Amount_t> amounts;
     RoundInfo roundInfo;
+    double q2Price;
 
-    unique_ptr<AbstractTradeStrategy> tradeStrategy;
+    unique_ptr<AbstractOfferStrategy> offerStrategy;
+    unique_ptr<AbstractAcceptanceStrategy> acceptanceStrategy;
 
     static void setupResources(vector<Amount_t>& resources, Amount_t const sumAmount, size_t const numActors);
     bool setup(size_t numActors, unsigned amountQ1, unsigned amountQ2, double alfa1, double alfa2);
     bool performNextTrade();
     void performNextRound();
     EdgeworthSituation getNextSituation() const;
+    Position trade(const EdgeworthSituation &situation, ActorRef& actor1, ActorRef& actor2);
 
-    vector<Amount_t> computeUtilities() const;
+    Amount_t computeWealth(Position position) const;
+    vector<Amount_t> computeActors(std::function<Amount_t(ActorConstRef const&)> evaluatorFn) const;
     void saveHistory();
 };
 
-struct AbstractTradeStrategy
+struct AbstractOfferStrategy
 {
-    virtual Position propose(Simulation::EdgeworthSituation& situation) const = 0;
-    Position trade(Simulation::EdgeworthSituation& situation,
-                   Simulation::ActorRef& actor1, Simulation::ActorRef& actor2);
-    virtual ~AbstractTradeStrategy(){}
+    virtual Position propose(Simulation::EdgeworthSituation const& situation) const = 0;
+    virtual ~AbstractOfferStrategy(){}
 };
 
-struct OppositeParetoTradeStrategy: AbstractTradeStrategy
+struct OppositeParetoOfferStrategy: AbstractOfferStrategy
 {
-    virtual Position propose(Simulation::EdgeworthSituation &situation) const override;
-    virtual ~OppositeParetoTradeStrategy() {}
+    virtual Position propose(Simulation::EdgeworthSituation const& situation) const override;
+    virtual ~OppositeParetoOfferStrategy() {}
 };
 
-struct RandomParetoTradeStrategy: AbstractTradeStrategy
+struct RandomParetoOfferStrategy: AbstractOfferStrategy
 {
-    virtual Position propose(Simulation::EdgeworthSituation &situation) const override;
-    virtual ~RandomParetoTradeStrategy() {}
+    virtual Position propose(Simulation::EdgeworthSituation const& situation) const override;
+    virtual ~RandomParetoOfferStrategy() {}
 };
 
 bool isPointInTriangle(Position const& p0, Position const& p1, Position const& p2, Position const& px);
 
-struct RandomTriangleTradeStrategy: AbstractTradeStrategy
+struct RandomTriangleOfferStrategy: AbstractOfferStrategy
 {
-    virtual Position propose(Simulation::EdgeworthSituation &situation) const override;
-    virtual ~RandomTriangleTradeStrategy() {}
+    virtual Position propose(Simulation::EdgeworthSituation const& situation) const override;
+    virtual ~RandomTriangleOfferStrategy() {}
+};
+
+struct AbstractAcceptanceStrategy
+{
+    virtual bool consider(Simulation::EdgeworthSituation const& situation) const = 0;
+    virtual ~AbstractAcceptanceStrategy(){}
+};
+
+struct AlwaysAcceptanceStrategy: AbstractAcceptanceStrategy
+{
+    virtual bool consider(Simulation::EdgeworthSituation const& situation) const override;
+    virtual ~AlwaysAcceptanceStrategy(){}
+};
+
+struct HigherGainAcceptanceStrategy: AbstractAcceptanceStrategy
+{
+    virtual bool consider(Simulation::EdgeworthSituation const& situation) const override;
+    virtual ~HigherGainAcceptanceStrategy(){}
+};
+
+struct HigherProportionAcceptanceStrategy: AbstractAcceptanceStrategy
+{
+    virtual bool consider(Simulation::EdgeworthSituation const& situation) const override;
+    virtual ~HigherProportionAcceptanceStrategy(){}
 };

@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>804</width>
-    <height>524</height>
+    <width>806</width>
+    <height>592</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -192,40 +192,77 @@
               </widget>
              </item>
              <item>
-              <widget class="QGroupBox" name="groupBoxTradeStrategy">
-               <property name="title">
-                <string>Trade strategy</string>
-               </property>
-               <layout class="QVBoxLayout" name="verticalLayout_3">
-                <item>
-                 <widget class="QRadioButton" name="radioButtonOppositePareto">
-                  <property name="text">
-                   <string>Opposite Pareto</string>
-                  </property>
-                  <property name="checkable">
-                   <bool>true</bool>
-                  </property>
-                  <property name="checked">
-                   <bool>true</bool>
-                  </property>
-                 </widget>
-                </item>
-                <item>
-                 <widget class="QRadioButton" name="radioButtonRandomPareto">
-                  <property name="text">
-                   <string>Random Pareto</string>
-                  </property>
-                 </widget>
-                </item>
-                <item>
-                 <widget class="QRadioButton" name="radioButtonRandomTriangle">
-                  <property name="text">
-                   <string>Random Triangle</string>
-                  </property>
-                 </widget>
-                </item>
-               </layout>
-              </widget>
+              <layout class="QHBoxLayout" name="horizontalLayoutTradeStrategy">
+               <item>
+                <widget class="QGroupBox" name="groupBoxOfferStrategy">
+                 <property name="title">
+                  <string>Offer strategy</string>
+                 </property>
+                 <layout class="QVBoxLayout" name="verticalLayout_3">
+                  <item>
+                   <widget class="QRadioButton" name="radioButtonOppositePareto">
+                    <property name="text">
+                     <string>Opposite Pareto</string>
+                    </property>
+                    <property name="checkable">
+                     <bool>true</bool>
+                    </property>
+                    <property name="checked">
+                     <bool>true</bool>
+                    </property>
+                   </widget>
+                  </item>
+                  <item>
+                   <widget class="QRadioButton" name="radioButtonRandomPareto">
+                    <property name="text">
+                     <string>Random Pareto</string>
+                    </property>
+                   </widget>
+                  </item>
+                  <item>
+                   <widget class="QRadioButton" name="radioButtonRandomTriangle">
+                    <property name="text">
+                     <string>Random Triangle</string>
+                    </property>
+                   </widget>
+                  </item>
+                 </layout>
+                </widget>
+               </item>
+               <item>
+                <widget class="QGroupBox" name="groupBoxAcceptanceStrategy">
+                 <property name="title">
+                  <string>Acceptance strategy</string>
+                 </property>
+                 <layout class="QVBoxLayout" name="verticalLayout_9">
+                  <item>
+                   <widget class="QRadioButton" name="radioButtonWantAlways">
+                    <property name="text">
+                     <string>Always</string>
+                    </property>
+                    <property name="checked">
+                     <bool>true</bool>
+                    </property>
+                   </widget>
+                  </item>
+                  <item>
+                   <widget class="QRadioButton" name="radioButtonWantHigherGain">
+                    <property name="text">
+                     <string>Want higher gain</string>
+                    </property>
+                   </widget>
+                  </item>
+                  <item>
+                   <widget class="QRadioButton" name="radioButtonWantHigherProportion">
+                    <property name="text">
+                     <string>Want higher proportion</string>
+                    </property>
+                   </widget>
+                  </item>
+                 </layout>
+                </widget>
+               </item>
+              </layout>
              </item>
              <item>
               <widget class="QPushButton" name="pushButtonApply">
@@ -281,9 +318,23 @@
               <string>Q2 Traded</string>
              </property>
              <widget class="QWidget" name="dockWidgetContents_7">
-              <layout class="QHBoxLayout" name="horizontalLayout_7">
+              <layout class="QVBoxLayout" name="verticalLayout_11">
                <item>
-                <widget class="QCustomPlot" name="plotQ2Traded" native="true"/>
+                <widget class="QCustomPlot" name="plotQ2Traded" native="true">
+                 <property name="sizePolicy">
+                  <sizepolicy hsizetype="Preferred" vsizetype="Expanding">
+                   <horstretch>0</horstretch>
+                   <verstretch>0</verstretch>
+                  </sizepolicy>
+                 </property>
+                </widget>
+               </item>
+               <item>
+                <widget class="QLabel" name="labelQ2Traded">
+                 <property name="text">
+                  <string>0</string>
+                 </property>
+                </widget>
                </item>
               </layout>
              </widget>
@@ -295,7 +346,7 @@
               <string>Q2 Distribution</string>
              </property>
              <widget class="QWidget" name="dockWidgetContents_3">
-              <layout class="QHBoxLayout" name="horizontalLayout_6">
+              <layout class="QVBoxLayout" name="verticalLayout_16">
                <item>
                 <widget class="QCustomPlot" name="plotQ2Distribution" native="true"/>
                </item>
@@ -320,19 +371,6 @@
                  </property>
                 </widget>
                </item>
-               <item>
-                <widget class="QLabel" name="labelSumUtilities">
-                 <property name="sizePolicy">
-                  <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
-                   <horstretch>0</horstretch>
-                   <verstretch>0</verstretch>
-                  </sizepolicy>
-                 </property>
-                 <property name="text">
-                  <string>TextLabel</string>
-                 </property>
-                </widget>
-               </item>
               </layout>
              </widget>
             </widget>
@@ -343,9 +381,23 @@
               <string>Q1 Traded</string>
              </property>
              <widget class="QWidget" name="dockWidgetContents_6">
-              <layout class="QHBoxLayout" name="horizontalLayout_4">
+              <layout class="QVBoxLayout" name="verticalLayout_12">
                <item>
-                <widget class="QCustomPlot" name="plotQ1Traded" native="true"/>
+                <widget class="QCustomPlot" name="plotQ1Traded" native="true">
+                 <property name="sizePolicy">
+                  <sizepolicy hsizetype="Preferred" vsizetype="Expanding">
+                   <horstretch>0</horstretch>
+                   <verstretch>0</verstretch>
+                  </sizepolicy>
+                 </property>
+                </widget>
+               </item>
+               <item>
+                <widget class="QLabel" name="labelQ1Traded">
+                 <property name="text">
+                  <string>0</string>
+                 </property>
+                </widget>
                </item>
               </layout>
              </widget>
@@ -357,7 +409,7 @@
               <string>Q1 Distribution</string>
              </property>
              <widget class="QWidget" name="dockWidgetContents_2">
-              <layout class="QHBoxLayout" name="horizontalLayout_5">
+              <layout class="QVBoxLayout" name="verticalLayout_15">
                <item>
                 <widget class="QCustomPlot" name="plotQ1Distribution" native="true"/>
                </item>
@@ -371,9 +423,71 @@
               <string>Sum Utility</string>
              </property>
              <widget class="QWidget" name="dockWidgetContents_8">
-              <layout class="QHBoxLayout" name="horizontalLayout_3">
+              <layout class="QVBoxLayout" name="verticalLayout_10">
                <item>
-                <widget class="QCustomPlot" name="plotSumUtility" native="true"/>
+                <widget class="QCustomPlot" name="plotSumUtility" native="true">
+                 <property name="sizePolicy">
+                  <sizepolicy hsizetype="Preferred" vsizetype="Expanding">
+                   <horstretch>0</horstretch>
+                   <verstretch>0</verstretch>
+                  </sizepolicy>
+                 </property>
+                </widget>
+               </item>
+               <item>
+                <widget class="QLabel" name="labelSumUtilities">
+                 <property name="sizePolicy">
+                  <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
+                   <horstretch>0</horstretch>
+                   <verstretch>0</verstretch>
+                  </sizepolicy>
+                 </property>
+                 <property name="text">
+                  <string>0</string>
+                 </property>
+                </widget>
+               </item>
+              </layout>
+             </widget>
+            </widget>
+           </item>
+           <item row="1" column="3">
+            <widget class="QDockWidget" name="dockWidgetWealthDistribution">
+             <property name="windowTitle">
+              <string>Wealth Distribution</string>
+             </property>
+             <widget class="QWidget" name="dockWidgetContents_10">
+              <layout class="QVBoxLayout" name="verticalLayout_13">
+               <item>
+                <widget class="QCustomPlot" name="plotWealthDistribution" native="true"/>
+               </item>
+              </layout>
+             </widget>
+            </widget>
+           </item>
+           <item row="2" column="3">
+            <widget class="QDockWidget" name="dockWidgetNumSuccessful">
+             <property name="windowTitle">
+              <string>Number of Successful Trades</string>
+             </property>
+             <widget class="QWidget" name="dockWidgetContents">
+              <layout class="QVBoxLayout" name="verticalLayout_14">
+               <item>
+                <widget class="QCustomPlot" name="plotNumSuccessfulTrades" native="true">
+                 <property name="sizePolicy">
+                  <sizepolicy hsizetype="Preferred" vsizetype="Expanding">
+                   <horstretch>0</horstretch>
+                   <verstretch>0</verstretch>
+                  </sizepolicy>
+                 </property>
+                </widget>
+               </item>
+               <item>
+                <widget class="QLabel" name="labelNumSuccessful">
+                 <property name="text">
+                  <string>0</string>
+                 </property>
+                </widget>
                </item>
               </layout>
              </widget>
@@ -561,7 +675,7 @@
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>804</width>
+     <width>806</width>
      <height>21</height>
     </rect>
    </property>

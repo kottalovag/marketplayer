@@ -50,14 +50,15 @@ bool ResourceToleranceEquality::operator()(const Amount_t& x, const Amount_t& y)
 }
 
 Simulation::EdgeworthSituation::EdgeworthSituation(const Simulation& simulation, const size_t actor1Idx, const size_t actor2Idx,
-        AbstractTradeStrategy& tradeStrategy)
+        AbstractOfferStrategy& offerStrategy, AbstractAcceptanceStrategy& acceptanceStrategy)
     : actor1(simulation, actor1Idx)
     , actor2(simulation, actor2Idx)
     , curve1(simulation.utility, actor1.q1, actor1.q2)
     , curve2(simulation.utility, actor2.q1, actor2.q2)
     , q1Sum(actor1.q1 + actor2.q1)
     , q2Sum(actor1.q2 + actor2.q2)
-    , result(tradeStrategy.propose(*this))
+    , result(offerStrategy.propose(*this))
+    , successful(acceptanceStrategy.consider(*this))
 {
 }
 
@@ -93,6 +94,27 @@ Position Simulation::EdgeworthSituation::calculateCurve2ParetoIntersection() con
     Amount_t const q1 = q1Sum - calculateParetoIntersectionQ1(curve2);
     Amount_t const q2 = getCurve2Function()(q1);
     return Position{q1, q2};
+}
+
+Position Simulation::EdgeworthSituation::calculateActor2Result() const
+{
+    return {q1Sum - result.q1, q2Sum - result.q2};
+}
+
+Amount_t Simulation::EdgeworthSituation::calculateOriginalUtility(const ActorConstRef &actor) const
+{
+    return curve1.utility.compute(actor.q1, actor.q2);
+}
+
+Amount_t Simulation::EdgeworthSituation::calculateNewUtilityActor1() const
+{
+    return curve1.utility.compute(result.q1, result.q2);
+}
+
+Amount_t Simulation::EdgeworthSituation::calculateNewUtilityActor2() const
+{
+    Position const actor2NewPos = calculateActor2Result();
+    return curve2.utility.compute(actor2NewPos.q1, actor2NewPos.q2);
 }
 
 void Simulation::Progress::setup(size_t numActors) {
@@ -157,6 +179,7 @@ bool Simulation::setup(size_t numActors, unsigned amountQ1, unsigned amountQ2, d
     for (size_t idx = 0; idx < amounts.size(); ++idx) {
         setupResources(resources[idx], amounts[idx], numActors);
     }
+    q2Price = amounts[0] / amounts[1];
     roundInfo.reset();
     saveHistory();
     return true;
@@ -166,13 +189,31 @@ Simulation::EdgeworthSituation Simulation::getNextSituation() const
 {
     size_t actor1Idx, actor2Idx;
     std::tie(actor1Idx, actor2Idx) = progress.getCurrentPair();
-    return EdgeworthSituation(*this, actor1Idx, actor2Idx, *tradeStrategy);
+    return EdgeworthSituation(*this, actor1Idx, actor2Idx, *offerStrategy, *acceptanceStrategy);
+}
+
+Position Simulation::trade(EdgeworthSituation const& situation, ActorRef& actor1, ActorRef& actor2)
+{
+    Position traded { actor1.q1, actor1.q2 };
+    traded = traded - situation.result;
+    actor1.q1 = situation.result.q1;
+    actor1.q2 = situation.result.q2;
+    Position actor2NewPos = situation.calculateActor2Result();
+    actor2.q1 = actor2NewPos.q1;
+    actor2.q2 = actor2NewPos.q2;
+    return traded;
+}
+
+Amount_t Simulation::computeWealth(Position position) const
+{
+    return position.q1 + position.q2*q2Price;
 }
 
 void Simulation::saveHistory()
 {
     history.q1Traded.push(roundInfo.q1Traded);
     history.q2Traded.push(roundInfo.q2Traded);
+    history.numSuccessful.push(roundInfo.numSuccessful);
 
     auto& moment = history.newMoment();
 
@@ -183,12 +224,23 @@ void Simulation::saveHistory()
     Amount_t const q2Resolution = amounts[1] / numActors / 8;
     moment.q2Distribution.setup(resources[1], q2Resolution);
 
-    Amount_t const utilityResolution = utility.compute(amounts[0],amounts[1])
-            /numActors / 8;
-    auto const& utilities = computeUtilities();
+    Amount_t const utilityResolution = utility.compute(amounts[0],amounts[1]) / numActors / 8;
+    auto const& utilities = computeActors(
+        [this](ActorConstRef const& actor) {
+            return utility.compute(actor.q1, actor.q2);
+        }
+    );
     moment.utilityDistribution.setup(utilities, utilityResolution);
     auto sumUtilities = std::accumulate(utilities.begin(), utilities.end(), 0.0);
     history.sumUtilities.push(sumUtilities);
+
+    Amount_t const wealthResolution = (amounts[0] + amounts[1]*q2Price) / numActors / 8;
+    auto const& wealth = computeActors(
+        [this](ActorConstRef const& actor) {
+            return computeWealth({actor.q1, actor.q2});
+        }
+    );
+    moment.wealthDistribution.setup(wealth, wealthResolution);
 }
 
 bool Simulation::performNextTrade()
@@ -196,11 +248,12 @@ bool Simulation::performNextTrade()
     size_t actor1Idx, actor2Idx;
     std::tie(actor1Idx, actor2Idx) = progress.getCurrentPair();
     auto situation = getNextSituation();
-    ActorRef actor1(*this, actor1Idx);
-    ActorRef actor2(*this, actor2Idx);
-    Position traded = tradeStrategy->trade(situation, actor1, actor2);
-
-    roundInfo.recordTrade(traded);
+    if (situation.successful) {
+        ActorRef actor1(*this, actor1Idx);
+        ActorRef actor2(*this, actor2Idx);
+        Position traded = trade(situation, actor1, actor2);
+        roundInfo.recordTrade(traded);
+    }
     bool const progressFinished = progress.advance();
     if (progressFinished) {
         saveHistory();
@@ -222,14 +275,15 @@ ResourceDataPair sampleFunction(std::function<double (double)> func, Amount_t ra
     return dataPair;
 }
 
-vector<Amount_t> Simulation::computeUtilities() const {
-    vector<Amount_t> utilities;
-    utilities.reserve(numActors);
+vector<Amount_t> Simulation::computeActors(std::function<Amount_t(ActorConstRef const&)> evaluatorFn) const
+{
+    vector<Amount_t> result;
+    result.reserve(numActors);
     for (size_t actorIdx = 0; actorIdx < numActors; ++actorIdx) {
         ActorConstRef actor(*this, actorIdx);
-        utilities.push_back(utility.compute(actor.q1, actor.q2));
+        result.push_back(evaluatorFn(actor));
     }
-    return utilities;
+    return result;
 }
 
 Distribution::Distribution(const vector<Amount_t>& subject, Amount_t resolution)
@@ -252,14 +306,14 @@ Distribution::Distribution(const vector<Amount_t>& subject, Amount_t resolution)
     }
 }
 
-Position OppositeParetoTradeStrategy::propose(Simulation::EdgeworthSituation& situation) const
+Position OppositeParetoOfferStrategy::propose(Simulation::EdgeworthSituation const& situation) const
 {
     Position const p2 = situation.calculateCurve2ParetoIntersection();
     //debugShowPoint(p2);
     return p2;
 }
 
-Position RandomParetoTradeStrategy::propose(Simulation::EdgeworthSituation& situation) const
+Position RandomParetoOfferStrategy::propose(Simulation::EdgeworthSituation const& situation) const
 {
     Position const p2 = situation.calculateCurve2ParetoIntersection();
     Position const p1 = situation.calculateCurve1ParetoIntersection();
@@ -269,7 +323,7 @@ Position RandomParetoTradeStrategy::propose(Simulation::EdgeworthSituation& situ
     return result;
 }
 
-Position RandomTriangleTradeStrategy::propose(Simulation::EdgeworthSituation& situation) const
+Position RandomTriangleOfferStrategy::propose(Simulation::EdgeworthSituation const& situation) const
 {
     Position const p0 = situation.getFixPoint();
     Position const p1 = situation.calculateCurve1ParetoIntersection();
@@ -316,18 +370,32 @@ bool isPointInTriangle(const Position& p0, const Position& p1, const Position& p
             0.0 <= c && c <= 1.0;
 }
 
-Position AbstractTradeStrategy::trade(Simulation::EdgeworthSituation& situation,
-                                      Simulation::ActorRef& actor1, Simulation::ActorRef& actor2)
+bool AlwaysAcceptanceStrategy::consider(Simulation::EdgeworthSituation const& situation) const
 {
-    Position traded { actor1.q1, actor1.q2 };
-    traded = traded - situation.result;
-    actor1.q1 = situation.result.q1;
-    actor1.q2 = situation.result.q2;
-    actor2.q1 = situation.q1Sum - actor1.q1;
-    actor2.q2 = situation.q2Sum - actor1.q2;
-    return traded;
+    return true;
 }
 
+bool HigherGainAcceptanceStrategy::consider(Simulation::EdgeworthSituation const& situation) const
+{
+    auto const actor1Utility = situation.calculateOriginalUtility(situation.actor1);
+    auto const actor2Utility = situation.calculateOriginalUtility(situation.actor2);
+    auto const actor1NewUtility = situation.calculateNewUtilityActor1();
+    auto const actor2NewUtility = situation.calculateNewUtilityActor2();
+    auto const actor1Gain = actor1NewUtility - actor1Utility;
+    auto const actor2Gain = actor2NewUtility - actor2Utility;
+    return actor1Gain <= actor2Gain;
+}
+
+bool HigherProportionAcceptanceStrategy::consider(Simulation::EdgeworthSituation const& situation) const
+{
+    auto const actor1Utility = situation.calculateOriginalUtility(situation.actor1);
+    auto const actor2Utility = situation.calculateOriginalUtility(situation.actor2);
+    auto const actor1NewUtility = situation.calculateNewUtilityActor1();
+    auto const actor2NewUtility = situation.calculateNewUtilityActor2();
+    auto const actor1Proportion = actor1NewUtility / actor1Utility;
+    auto const actor2Proportion = actor2NewUtility / actor2Utility;
+    return actor1Proportion <= actor2Proportion;
+}
 
 History::History(): time(0) {}
 
@@ -338,12 +406,12 @@ Moment& History::newMoment()
     return moments.back();
 }
 
-#include <initializer_list>
 void History::reset()
 {
     time = 0;
     q1Traded.reset();
     q2Traded.reset();
+    numSuccessful.reset();
     sumUtilities.reset();
     moments.resize(0);
 }
@@ -364,10 +432,13 @@ void Simulation::RoundInfo::reset()
 {
     q1Traded = 0;
     q2Traded = 0;
+    numSuccessful = 0;
 }
 
 void Simulation::RoundInfo::recordTrade(Position traded)
 {
     q1Traded += std::abs(traded.q1);
     q2Traded += std::abs(traded.q2);
+    numSuccessful += 1;
 }
+

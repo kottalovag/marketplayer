@@ -25,9 +25,11 @@ MainWindow::MainWindow(QWidget *parent) :
     setupDistributionPlot(ui->plotQ1Distribution, "Q1", "Actors");
     setupDistributionPlot(ui->plotQ2Distribution, "Q2", "Actors");
     setupDistributionPlot(ui->plotUtilityDistribution, "Utility", "Actors");
+    setupDistributionPlot(ui->plotWealthDistribution, "Wealth", "Actors");
     setupDataTimePlot(ui->plotQ1Traded, "Q1 traded");
     setupDataTimePlot(ui->plotQ2Traded, "Q2 traded");
     setupDataTimePlot(ui->plotSumUtility, "Sum of utilities");
+    setupDataTimePlot(ui->plotNumSuccessfulTrades, "Successful trades");
 
     debugShowPoint = [this](Position p){
         auto debugGraph = ui->plotEdgeworthBox->graph(5);
@@ -48,12 +50,12 @@ void MainWindow::setupSpeedControls()
             ui->actionNextRound, SLOT(trigger()));
 
     ui->sliderSpeed->setMaximum(8);
-    ui->sliderSpeed->setValue(3);
+    ui->sliderSpeed->setValue(2);
 }
 
 void MainWindow::setupControlsStartup()
 {
-    ui->lineEditNumActors->setText("100");
+    ui->lineEditNumActors->setText("1000");
     ui->lineEditNumActors->setValidator(new QIntValidator(2,2000000000, this));
 
     auto resourceValidator = new QDoubleValidator(
@@ -72,6 +74,7 @@ void MainWindow::setupControlsStartup()
     ui->lineEditAlfa2->setEnabled(false); //TODO resolve
 
     ui->radioButtonOppositePareto->setEnabled(true);
+    ui->radioButtonWantAlways->setEnabled(true);
 
     connect(ui->sliderTime, SIGNAL(rangeChanged(int,int)),
             this, SLOT(onSliderTimeRangeChanged(int,int)));
@@ -288,7 +291,7 @@ void MainWindow::plotDistribution(QCustomPlot* plot, HeavyDistribution const& di
     bars->setWidth(distribution.resolution);
     bars->setData(data.x, data.y);
     plot->xAxis->setRange(0.0, data.x.last() + distribution.resolution);
-    plot->yAxis->setRange(0.0, distribution.maxNum + 1.0);
+    plot->yAxis->setRange(0.0, distribution.maxNum * 1.1);
     plot->xAxis->setTickStep(distribution.resolution);
 
     plot->replot();
@@ -313,17 +316,22 @@ void MainWindow::updateOverview()
 void MainWindow::loadHistoryMoment(int time)
 {
     auto const momentIdx = time;
+    auto const& history = simulation.history;
 
-    Moment const& moment = simulation.history.moments[momentIdx];
+    Moment const& moment = history.moments[momentIdx];
     plotDistribution(ui->plotQ1Distribution, moment.q1Distribution);
     plotDistribution(ui->plotQ2Distribution, moment.q2Distribution);
     plotDistribution(ui->plotUtilityDistribution, moment.utilityDistribution);
+    plotDistribution(ui->plotWealthDistribution, moment.wealthDistribution);
+    ui->labelSumUtilities->setText("Sum: " + QString::number(history.sumUtilities[momentIdx]));
+    ui->labelQ1Traded->setText("Traded: " + QString::number(history.q1Traded[momentIdx]));
+    ui->labelQ2Traded->setText("Traded: " + QString::number(history.q2Traded[momentIdx]));
+    ui->labelNumSuccessful->setText("Successful: " + QString::number(history.numSuccessful[momentIdx]));
 
-    ui->labelSumUtilities->setText("Sum: " + QString::number(simulation.history.sumUtilities[momentIdx]));
-
-    plotDataTime(ui->plotQ1Traded, simulation.history.q1Traded, time);
-    plotDataTime(ui->plotQ2Traded, simulation.history.q2Traded, time);
-    plotDataTime(ui->plotSumUtility, simulation.history.sumUtilities, time);
+    plotDataTime(ui->plotQ1Traded, history.q1Traded, time);
+    plotDataTime(ui->plotQ2Traded, history.q2Traded, time);
+    plotDataTime(ui->plotSumUtility, history.sumUtilities, time);
+    plotDataTime(ui->plotNumSuccessfulTrades, history.numSuccessful, time);
 }
 
 void MainWindow::updateTimeRange()
@@ -381,15 +389,25 @@ void MainWindow::on_actionApply_triggered()
                      ui->lineEditAlfa1->text().toDouble(),
                      ui->lineEditAlfa2->text().toDouble());
 
-    unique_ptr<AbstractTradeStrategy> strategy;
+    unique_ptr<AbstractOfferStrategy> offerStrategy;
     if (ui->radioButtonOppositePareto->isChecked()) {
-        strategy.reset(new OppositeParetoTradeStrategy);
+        offerStrategy.reset(new OppositeParetoOfferStrategy);
     } else if (ui->radioButtonRandomPareto->isChecked()) {
-        strategy.reset(new RandomParetoTradeStrategy);
+        offerStrategy.reset(new RandomParetoOfferStrategy);
     } else {
-        strategy.reset(new RandomTriangleTradeStrategy);
+        offerStrategy.reset(new RandomTriangleOfferStrategy);
     }
-    simulation.tradeStrategy = std::move(strategy);
+    simulation.offerStrategy = std::move(offerStrategy);
+
+    unique_ptr<AbstractAcceptanceStrategy> acceptanceStrategy;
+    if (ui->radioButtonWantAlways->isChecked()) {
+        acceptanceStrategy.reset(new AlwaysAcceptanceStrategy);
+    } else if (ui->radioButtonWantHigherGain->isChecked()) {
+        acceptanceStrategy.reset(new HigherGainAcceptanceStrategy);
+    } else {
+        acceptanceStrategy.reset(new HigherProportionAcceptanceStrategy);
+    }
+    simulation.acceptanceStrategy = std::move(acceptanceStrategy);
 
     ui->progressBarRound->setMaximum(simulation.progress.getNum());
 
