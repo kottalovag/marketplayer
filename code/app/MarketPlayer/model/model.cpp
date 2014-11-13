@@ -45,10 +45,6 @@ Amount_t IndifferenceCurve::getQ2(Amount_t q1) const {
     return fixP.q2 * pow(fixP.q1/q1, utility.alfa1/utility.alfa2);
 }
 
-bool ResourceToleranceEquality::operator()(const Amount_t& x, const Amount_t& y) const {
-    return fabs(x-y) < std::numeric_limits<Amount_t>::epsilon();
-}
-
 Simulation::EdgeworthSituation::EdgeworthSituation(const Simulation& simulation, const size_t actor1Idx, const size_t actor2Idx,
         AbstractOfferStrategy& offerStrategy, AbstractAcceptanceStrategy& acceptanceStrategy, URNG& rng)
     : actor1(simulation, actor1Idx)
@@ -283,14 +279,6 @@ void Simulation::performNextRound()
     while (!performNextTrade());
 }
 
-ResourceDataPair sampleFunction(std::function<double (double)> func, Amount_t rangeStart, Amount_t rangeFinish, Amount_t resolution){
-    ResourceDataPair dataPair;
-    for (auto x = rangeStart; x <= rangeFinish; x += resolution) {
-        dataPair.push(x, func(x));
-    }
-    return dataPair;
-}
-
 vector<Amount_t> Simulation::computeActors(std::function<Amount_t(ActorConstRef const&)> evaluatorFn) const
 {
     vector<Amount_t> result;
@@ -300,26 +288,6 @@ vector<Amount_t> Simulation::computeActors(std::function<Amount_t(ActorConstRef 
         result.push_back(evaluatorFn(actor));
     }
     return result;
-}
-
-Distribution::Distribution(const vector<Amount_t>& subject, Amount_t resolution)
-    : subject(subject)
-    , resolution(resolution)
-    , maxSubject(*std::max_element(subject.begin(), subject.end()))
-    , numBuckets(static_cast<size_t>(ceil(maxSubject/resolution)))
-{
-    data.resize(numBuckets);
-
-    //optimization possibility:
-    Amount_t currentBucket = resolution/2;
-    for (size_t idx = 0; idx < numBuckets; ++idx, currentBucket += resolution) {
-        data.x[idx] = currentBucket;
-    }
-
-    for (auto const& amount : subject) {
-        auto bucketIdx = static_cast<ResourceDataPair::size_type>(floor(amount/resolution));
-        data.y[bucketIdx] += 1;
-    }
 }
 
 Position OppositeParetoOfferStrategy::propose(Simulation::EdgeworthSituation const& situation, URNG&) const
@@ -437,17 +405,6 @@ void History::reset()
     sumUtilities.reset();
     wealthDeviation.reset();
     moments.resize(0);
-}
-
-void HeavyDistribution::setup(const vector<Amount_t> &subject, Amount_t resolution)
-{
-    Distribution distribution(subject, resolution);
-    this->data = std::move(distribution.data);
-    this->resolution = distribution.resolution;
-    this->maxSubject = distribution.maxSubject;
-    this->maxNum = *std::max_element(data.y.begin(), data.y.end());
-    this->numBuckets = distribution.numBuckets;
-    this->standardDeviation = calculateStandardDeviation(subject);
 }
 
 void Simulation::RoundInfo::reset()
