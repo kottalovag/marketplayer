@@ -126,6 +126,23 @@ struct ResourceToleranceEquality
 
 typedef std::unordered_map<Amount_t, bool, std::hash<Amount_t>, ResourceToleranceEquality> PinPointMap;
 
+template<typename T>
+T calculateStandardDeviation(vector<T> const& subject)
+{
+    if (subject.size() > 1) {
+        auto const sum = std::accumulate(subject.begin(), subject.end(), 0.0);
+        auto const mean = sum / subject.size();
+        T accumulated = 0.0;
+        for (auto v : subject) {
+            accumulated += (v-mean) * (v-mean);
+        }
+        auto result = sqrt(accumulated / (subject.size()-1));
+        return result;
+    } else {
+        return T{};
+    }
+}
+
 ResourceDataPair sampleFunction(std::function<double(double)> func, Amount_t rangeStart, Amount_t rangeFinish, Amount_t resolution);
 
 struct Distribution {
@@ -146,6 +163,7 @@ struct HeavyDistribution
     Amount_t maxNum;
     size_t numBuckets;
     ResourceDataPair data;
+    Amount_t standardDeviation;
 
     void setup(vector<Amount_t> const& subject, Amount_t resolution);
 };
@@ -160,7 +178,7 @@ struct History
     History();
     size_t time;
     vector<Moment> moments;
-    DataTimePair q1Traded, q2Traded, numSuccessful, sumUtilities;
+    DataTimePair q1Traded, q2Traded, numSuccessful, sumUtilities, wealthDeviation;
     Moment& newMoment();
     void reset();
 };

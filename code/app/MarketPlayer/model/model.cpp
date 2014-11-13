@@ -253,6 +253,8 @@ void Simulation::saveHistory()
         }
     );
     moment.wealthDistribution.setup(wealth, wealthResolution);
+
+    history.wealthDeviation.push(moment.wealthDistribution.standardDeviation);
 }
 
 bool Simulation::performNextTrade()
@@ -433,6 +435,7 @@ void History::reset()
     q2Traded.reset();
     numSuccessful.reset();
     sumUtilities.reset();
+    wealthDeviation.reset();
     moments.resize(0);
 }
 
@@ -444,6 +447,7 @@ void HeavyDistribution::setup(const vector<Amount_t> &subject, Amount_t resoluti
     this->maxSubject = distribution.maxSubject;
     this->maxNum = *std::max_element(data.y.begin(), data.y.end());
     this->numBuckets = distribution.numBuckets;
+    this->standardDeviation = calculateStandardDeviation(subject);
 }
 
 void Simulation::RoundInfo::reset()

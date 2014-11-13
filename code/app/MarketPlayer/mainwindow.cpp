@@ -31,6 +31,7 @@ MainWindow::MainWindow(QWidget *parent) :
     setupDataTimePlotWithPercentage(ui->plotQ2Traded, "Q2 traded");
     setupDataTimePlot(ui->plotSumUtility, "Sum of utilities");
     setupDataTimePlotWithPercentage(ui->plotNumSuccessfulTrades, "Successful trades");
+    setupDataTimePlot(ui->plotWealthDeviation, "Wealth deviation");
 
     debugShowPoint = [this](Position p){
         auto debugGraph = ui->plotEdgeworthBox->graph(5);
@@ -339,11 +340,13 @@ void MainWindow::loadHistoryMoment(int time)
     ui->labelQ1Traded->setText("Traded: " + QString::number(history.q1Traded[momentIdx]));
     ui->labelQ2Traded->setText("Traded: " + QString::number(history.q2Traded[momentIdx]));
     ui->labelNumSuccessful->setText("Successful: " + QString::number(history.numSuccessful[momentIdx]));
+    ui->labelWealthDeviation->setText("Wealth deviation: " + QString::number(history.wealthDeviation[momentIdx]));
 
     plotDataTimeAndPercentage(ui->plotQ1Traded, history.q1Traded, time, simulation.amounts[0]);
     plotDataTimeAndPercentage(ui->plotQ2Traded, history.q2Traded, time, simulation.amounts[1]);
     plotDataTime(ui->plotSumUtility, history.sumUtilities, time);
     plotDataTimeAndPercentage(ui->plotNumSuccessfulTrades, history.numSuccessful, time, simulation.numActors/2);
+    plotDataTime(ui->plotWealthDeviation, history.wealthDeviation, time);
 }
 
 void MainWindow::updateTimeRange()
@@ -429,7 +432,7 @@ void MainWindow::on_actionApply_triggered()
     updateProgress();
     updateTimeRange();
 
-    changeToTab(ui->tabWidget, ui->tabOverview);
+    changeToTab(ui->tabWidget, ui->tabMainOverview);
 }
 
 void MainWindow::on_actionNextRound_triggered()
