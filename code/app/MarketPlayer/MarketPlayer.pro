@@ -17,10 +17,16 @@ INCLUDEPATH += model
 SOURCES += main.cpp\
         mainwindow.cpp \
     qcustomplot.cpp \
-    model/model.cpp
+    model/model.cpp \
+    datatimeplot.cpp \
+    plotutils.cpp \
+    datatimeplotwithpercentage.cpp
 
 HEADERS  += mainwindow.h \
     qcustomplot.h \
-    model/model.h
+    model/model.h \
+    datatimeplot.h \
+    plotutils.h \
+    datatimeplotwithpercentage.h
 
 FORMS    += mainwindow.ui

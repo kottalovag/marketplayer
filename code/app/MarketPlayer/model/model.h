@@ -1,8 +1,5 @@
 #pragma once
 
-#include "mainwindow.h"
-#include "ui_mainwindow.h"
-
 #include <ctime>
 #include <random>
 #include <algorithm>

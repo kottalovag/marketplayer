@@ -4,6 +4,8 @@
 #include <QMainWindow>
 
 #include "model.h"
+#include "datatimeplot.h"
+#include "datatimeplotwithpercentage.h"
 
 namespace Ui {
 class MainWindow;
@@ -27,18 +29,13 @@ private:
 
     void setupEdgeworthBox();
     void setupDistributionPlot(QCustomPlot* plot, QString xLabel, QString yLabel);
-    void setupDataTimePlot(QCustomPlot* plot, QString yLabel);
-    void setupDataTimePlotWithPercentage(QCustomPlot* plot, QString yLabel);
     void plotEdgeworth(QCustomPlot* plot, Simulation::EdgeworthSituation const& situation);
 
     static void plotDistribution(QCustomPlot* plot, HeavyDistribution const& distribution);
-    static void plotDataTime(QCustomPlot* plot, DataTimePair const& data, int currentIdx);
-    static void plotDataTimeAndPercentage(QCustomPlot* plot, DataTimePair const& data, int currentIdx, Amount_t max);
 
     void plotResourceDistribution(QCustomPlot* plot, const Simulation& simulation, size_t resourceIdx, Amount_t resolution) const;
     void plotUtilityDistribution(QCustomPlot* plot, const Simulation& simulation, Amount_t resolution) const;
 
-    void cleanPlotData(QCustomPlot* plot);
     void updateOverview();
     void loadHistoryMoment(int time);
     void updateTimeRange();
@@ -74,6 +71,11 @@ private:
     Ui::MainWindow *ui;
     Simulation simulation;
     QTimer* timer;
+    unique_ptr<DataTimePlotWithPercentage> plotQ1Traded;
+    unique_ptr<DataTimePlotWithPercentage> plotQ2Traded;
+    unique_ptr<DataTimePlot> plotSumUtility;
+    unique_ptr<DataTimePlotWithPercentage> plotNumSuccessfulTrades;
+    unique_ptr<DataTimePlot> plotWealthDeviation;
 };
 
 #endif // MAINWINDOW_H

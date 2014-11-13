@@ -3,6 +3,7 @@
 
 #include "model.h"
 #include "qcustomplot.h"
+#include "plotutils.h"
 
 #include <iostream>
 #include <time.h>
@@ -23,15 +24,24 @@ MainWindow::MainWindow(QWidget *parent) :
     setupControlsStartup();
 
     setupEdgeworthBox();
+
+    plotQ1Traded.reset(new DataTimePlotWithPercentage(
+        ui->plotQ1Traded, ui->labelQ1Traded, "Q1 traded", "Q1 traded"));
+    plotQ2Traded.reset(new DataTimePlotWithPercentage(
+        ui->plotQ2Traded, ui->labelQ2Traded, "Q2 traded", "Q2 traded"));
+    plotSumUtility.reset(new DataTimePlot(
+        ui->plotSumUtility, ui->labelSumUtilities, "Sum of utilities", "Sum of utilities"));
+    plotNumSuccessfulTrades.reset(new DataTimePlotWithPercentage(
+        ui->plotNumSuccessfulTrades, ui->labelNumSuccessful, "Successful trades", "Successful trades"));
+    plotWealthDeviation.reset(new DataTimePlot(
+        ui->plotWealthDeviation, ui->labelWealthDeviation, "Wealth deviation", "Wealth deviation"));
+
     setupDistributionPlot(ui->plotQ1Distribution, "Q1", "Actors");
     setupDistributionPlot(ui->plotQ2Distribution, "Q2", "Actors");
     setupDistributionPlot(ui->plotUtilityDistribution, "Utility", "Actors");
     setupDistributionPlot(ui->plotWealthDistribution, "Wealth", "Actors");
-    setupDataTimePlotWithPercentage(ui->plotQ1Traded, "Q1 traded");
-    setupDataTimePlotWithPercentage(ui->plotQ2Traded, "Q2 traded");
-    setupDataTimePlot(ui->plotSumUtility, "Sum of utilities");
-    setupDataTimePlotWithPercentage(ui->plotNumSuccessfulTrades, "Successful trades");
-    setupDataTimePlot(ui->plotWealthDeviation, "Wealth deviation");
+
+    resetControls();
 
     debugShowPoint = [this](Position p){
         auto debugGraph = ui->plotEdgeworthBox->graph(5);
@@ -99,8 +109,6 @@ void MainWindow::setupControlsStartup()
 
     setupSpeedControls();
 
-    resetControls();
-
     changeToTab(ui->tabWidget, ui->tabSetup);
 }
 
@@ -117,12 +125,16 @@ void MainWindow::resetControls()
     ui->sliderTime->setMinimum(0);
     ui->sliderTime->setMaximum(0);
 
+    plotQ1Traded->reset();
+    plotQ2Traded->reset();
+    plotSumUtility->reset();
+    plotWealthDeviation->reset();
+    plotNumSuccessfulTrades->reset();
+
     cleanPlotData(ui->plotEdgeworthBox);
     cleanPlotData(ui->plotQ1Distribution);
     cleanPlotData(ui->plotQ2Distribution);
     cleanPlotData(ui->plotUtilityDistribution);
-    cleanPlotData(ui->plotQ1Traded);
-    cleanPlotData(ui->plotQ2Traded);
 
     ui->actionSaveEdgeworthDiagram->setEnabled(false);
 
@@ -134,13 +146,6 @@ void MainWindow::resetControls()
     ui->pushButtonPause->setEnabled(false);
     ui->actionNextTrade->setEnabled(false);
     ui->pushButtonNextTrade->setEnabled(false);
-}
-
-void MainWindow::cleanPlotData(QCustomPlot* plot)
-{
-    for (size_t graphIdx = 0; graphIdx < plot->plottableCount(); ++graphIdx) {
-        plot->graph(graphIdx)->clearData();
-    }
 }
 
 void MainWindow::setupEdgeworthBox()
@@ -203,32 +208,6 @@ void MainWindow::setupEdgeworthBox()
     debugPen.setColor(Qt::cyan);
     debugPen.setWidth(2);
     debugGraph->setPen(debugPen);
-}
-
-void MainWindow::setupDataTimePlot(QCustomPlot *plot, QString yLabel)
-{
-    plot->xAxis->setLabel("Time");
-    plot->yAxis->setLabel(yLabel);
-
-    //data
-    plot->addGraph();
-
-    //current point
-    plot->addGraph();
-    auto currentGraph = plot->graph(1);
-    currentGraph->setLineStyle(QCPGraph::lsNone);
-    currentGraph->setScatterStyle(QCPScatterStyle(QCPScatterStyle::ssCross));
-    auto currentPen = currentGraph->pen();
-    currentPen.setColor(Qt::black);
-    currentPen.setWidth(2);
-    currentGraph->setPen(currentPen);
-}
-
-void MainWindow::setupDataTimePlotWithPercentage(QCustomPlot *plot, QString yLabel)
-{
-    setupDataTimePlot(plot, yLabel);
-    plot->yAxis2->setVisible(true);
-    plot->yAxis2->setLabel("%");
 }
 
 void MainWindow::plotEdgeworth(QCustomPlot* plot, Simulation::EdgeworthSituation const& situation) {
@@ -301,26 +280,6 @@ void MainWindow::plotDistribution(QCustomPlot* plot, HeavyDistribution const& di
     plot->replot();
 }
 
-void MainWindow::plotDataTime(QCustomPlot* plot, DataTimePair const& dataTime, int currentIdx)
-{
-    plot->xAxis->setRange(0.0, dataTime.data.x.last() + 1);
-    plot->yAxis->setRange(0.0, dataTime.max * 1.1);
-
-    plot->graph(0)->setData(dataTime.data.x, dataTime.data.y);
-
-    plot->graph(1)->clearData();
-    plot->graph(1)->addData(currentIdx, dataTime[currentIdx]);
-    plot->replot();
-}
-
-void MainWindow::plotDataTimeAndPercentage(QCustomPlot* plot, DataTimePair const& dataTime, int currentIdx, Amount_t max)
-{
-    plotDataTime(plot, dataTime, currentIdx);
-
-    Amount_t percentageRangeMax = dataTime.max / max * 100;
-    plot->yAxis2->setRange(0.0, percentageRangeMax * 1.1);
-}
-
 void MainWindow::updateOverview()
 {
     loadHistoryMoment(simulation.history.time - 1);
@@ -336,17 +295,17 @@ void MainWindow::loadHistoryMoment(int time)
     plotDistribution(ui->plotQ2Distribution, moment.q2Distribution);
     plotDistribution(ui->plotUtilityDistribution, moment.utilityDistribution);
     plotDistribution(ui->plotWealthDistribution, moment.wealthDistribution);
-    ui->labelSumUtilities->setText("Sum: " + QString::number(history.sumUtilities[momentIdx]));
-    ui->labelQ1Traded->setText("Traded: " + QString::number(history.q1Traded[momentIdx]));
-    ui->labelQ2Traded->setText("Traded: " + QString::number(history.q2Traded[momentIdx]));
-    ui->labelNumSuccessful->setText("Successful: " + QString::number(history.numSuccessful[momentIdx]));
-    ui->labelWealthDeviation->setText("Wealth deviation: " + QString::number(history.wealthDeviation[momentIdx]));
 
-    plotDataTimeAndPercentage(ui->plotQ1Traded, history.q1Traded, time, simulation.amounts[0]);
-    plotDataTimeAndPercentage(ui->plotQ2Traded, history.q2Traded, time, simulation.amounts[1]);
-    plotDataTime(ui->plotSumUtility, history.sumUtilities, time);
-    plotDataTimeAndPercentage(ui->plotNumSuccessfulTrades, history.numSuccessful, time, simulation.numActors/2);
-    plotDataTime(ui->plotWealthDeviation, history.wealthDeviation, time);
+    plotQ1Traded->plotDataAndPercentage(
+                history.q1Traded, time, simulation.amounts[0]);
+    plotQ2Traded->plotDataAndPercentage(
+                history.q2Traded, time, simulation.amounts[1]);
+    plotSumUtility->plotData(
+                history.sumUtilities, time);
+    plotNumSuccessfulTrades->plotDataAndPercentage(
+                history.numSuccessful, time, simulation.numActors/2);
+    plotWealthDeviation->plotData(
+                history.wealthDeviation, time);
 }
 
 void MainWindow::updateTimeRange()
@@ -500,7 +459,6 @@ void MainWindow::on_sliderSpeed_valueChanged(int)
 {
     timer->setInterval(calculateSpeedInterval());
 }
-
 
 void MainWindow::on_sliderTime_valueChanged(int value)
 {
