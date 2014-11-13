@@ -3,7 +3,7 @@
 
 #include <QString>
 #include <QLabel>
-#include "model.h"
+#include "modelutils.h"
 #include "plot.h"
 
 class DataTimePlot : public Plot

@@ -3,7 +3,7 @@
 
 #include <QString>
 
-#include "model.h"
+#include "modelutils.h"
 #include "plot.h"
 
 class DistributionPlot : public Plot
