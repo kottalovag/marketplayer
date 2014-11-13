@@ -129,4 +129,6 @@ struct HeavyDistribution
     void setup(vector<Amount_t> const& subject, Amount_t resolution);
 };
 
+bool isPointInTriangle(Position const& p0, Position const& p1, Position const& p2, Position const& px);
+
 #endif // MODELUTILS_H

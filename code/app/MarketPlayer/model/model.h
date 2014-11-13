@@ -180,8 +180,6 @@ struct RandomParetoOfferStrategy: AbstractOfferStrategy
     virtual ~RandomParetoOfferStrategy() {}
 };
 
-bool isPointInTriangle(Position const& p0, Position const& p1, Position const& p2, Position const& px);
-
 struct RandomTriangleOfferStrategy: AbstractOfferStrategy
 {
     virtual Position propose(Simulation::EdgeworthSituation const& situation, URNG& rng) const override;

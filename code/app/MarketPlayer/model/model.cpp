@@ -333,27 +333,6 @@ Position RandomTriangleOfferStrategy::propose(Simulation::EdgeworthSituation con
     return px;
 }
 
-bool isPointInTriangle(const Position& p0, const Position& p1, const Position& p2, const Position& px) {
-    //Barycentric method
-
-    auto const& x1 = p0.q1;
-    auto const& y1 = p0.q2;
-    auto const& x2 = p1.q1;
-    auto const& y2 = p1.q2;
-    auto const& x3 = p2.q1;
-    auto const& y3 = p2.q2;
-    auto const& x = px.q1;
-    auto const& y = px.q2;
-
-    double denominator = ((y2 - y3)*(x1 - x3) + (x3 - x2)*(y1 - y3));
-    double a = ((y2 - y3)*(x - x3) + (x3 - x2)*(y - y3)) / denominator;
-    double b = ((y3 - y1)*(x - x3) + (x1 - x3)*(y - y3)) / denominator;
-    double c = 1.0 - a - b;
-    return  0.0 <= a && a <= 1.0 &&
-            0.0 <= b && b <= 1.0 &&
-            0.0 <= c && c <= 1.0;
-}
-
 bool AlwaysAcceptanceStrategy::consider(Simulation::EdgeworthSituation const&) const
 {
     return true;
