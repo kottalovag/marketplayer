@@ -6,6 +6,7 @@
 #include "model.h"
 #include "datatimeplot.h"
 #include "datatimeplotwithpercentage.h"
+#include "distributionplot.h"
 
 namespace Ui {
 class MainWindow;
@@ -19,27 +20,21 @@ public:
     explicit MainWindow(QWidget *parent = 0);
     ~MainWindow();
 
-
     void changeToTab(QTabWidget* tabWidget, QWidget* desiredTab);
     void setupSpeedControls();
+
 private:
     int calculateSpeedInterval() const;
     void setupControlsStartup();
     void resetControls();
 
     void setupEdgeworthBox();
-    void setupDistributionPlot(QCustomPlot* plot, QString xLabel, QString yLabel);
     void plotEdgeworth(QCustomPlot* plot, Simulation::EdgeworthSituation const& situation);
-
-    static void plotDistribution(QCustomPlot* plot, HeavyDistribution const& distribution);
-
-    void plotResourceDistribution(QCustomPlot* plot, const Simulation& simulation, size_t resourceIdx, Amount_t resolution) const;
-    void plotUtilityDistribution(QCustomPlot* plot, const Simulation& simulation, Amount_t resolution) const;
+    void plotNextSituation();
 
     void updateOverview();
     void loadHistoryMoment(int time);
     void updateTimeRange();
-    void plotNextSituation();
     void updateProgress();
 
 private slots:
@@ -76,6 +71,11 @@ private:
     unique_ptr<DataTimePlot> plotSumUtility;
     unique_ptr<DataTimePlotWithPercentage> plotNumSuccessfulTrades;
     unique_ptr<DataTimePlot> plotWealthDeviation;
+
+    unique_ptr<DistributionPlot> plotQ1Distribution;
+    unique_ptr<DistributionPlot> plotQ2Distribution;
+    unique_ptr<DistributionPlot> plotUtilityDistribution;
+    unique_ptr<DistributionPlot> plotWealthDistribution;
 };
 
 #endif // MAINWINDOW_H

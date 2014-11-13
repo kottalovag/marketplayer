@@ -36,10 +36,14 @@ MainWindow::MainWindow(QWidget *parent) :
     plotWealthDeviation.reset(new DataTimePlot(
         ui->plotWealthDeviation, ui->labelWealthDeviation, "Wealth deviation", "Wealth deviation"));
 
-    setupDistributionPlot(ui->plotQ1Distribution, "Q1", "Actors");
-    setupDistributionPlot(ui->plotQ2Distribution, "Q2", "Actors");
-    setupDistributionPlot(ui->plotUtilityDistribution, "Utility", "Actors");
-    setupDistributionPlot(ui->plotWealthDistribution, "Wealth", "Actors");
+    plotQ1Distribution.reset(new DistributionPlot(
+        ui->plotQ1Distribution, "Q1", "Actors"));
+    plotQ2Distribution.reset(new DistributionPlot(
+        ui->plotQ2Distribution, "Q2", "Actors"));
+    plotUtilityDistribution.reset(new DistributionPlot(
+        ui->plotUtilityDistribution, "Utiltiy", "Actors"));
+    plotWealthDistribution.reset(new DistributionPlot(
+        ui->plotWealthDistribution, "Wealth", "Actors"));
 
     resetControls();
 
@@ -131,10 +135,12 @@ void MainWindow::resetControls()
     plotWealthDeviation->reset();
     plotNumSuccessfulTrades->reset();
 
+    plotQ1Distribution->reset();
+    plotQ2Distribution->reset();
+    plotUtilityDistribution->reset();
+    plotWealthDistribution->reset();
+
     cleanPlotData(ui->plotEdgeworthBox);
-    cleanPlotData(ui->plotQ1Distribution);
-    cleanPlotData(ui->plotQ2Distribution);
-    cleanPlotData(ui->plotUtilityDistribution);
 
     ui->actionSaveEdgeworthDiagram->setEnabled(false);
 
@@ -258,28 +264,6 @@ void MainWindow::plotEdgeworth(QCustomPlot* plot, Simulation::EdgeworthSituation
     plot->replot();
 }
 
-void MainWindow::setupDistributionPlot(QCustomPlot* plot, QString xLabel, QString yLabel)
-{
-    auto bars = new QCPBars(plot->xAxis, plot->yAxis);
-    plot->addPlottable(bars);
-    plot->xAxis->setLabel(xLabel);
-    plot->yAxis->setLabel(yLabel);
-}
-
-void MainWindow::plotDistribution(QCustomPlot* plot, HeavyDistribution const& distribution)
-{
-    auto const& data = distribution.data;
-
-    auto bars = static_cast<QCPBars*>(plot->plottable(0));
-    bars->setWidth(distribution.resolution);
-    bars->setData(data.x, data.y);
-    plot->xAxis->setRange(0.0, data.x.last() + distribution.resolution);
-    plot->yAxis->setRange(0.0, distribution.maxNum * 1.1);
-    plot->xAxis->setTickStep(distribution.resolution);
-
-    plot->replot();
-}
-
 void MainWindow::updateOverview()
 {
     loadHistoryMoment(simulation.history.time - 1);
@@ -291,10 +275,10 @@ void MainWindow::loadHistoryMoment(int time)
     auto const& history = simulation.history;
 
     Moment const& moment = history.moments[momentIdx];
-    plotDistribution(ui->plotQ1Distribution, moment.q1Distribution);
-    plotDistribution(ui->plotQ2Distribution, moment.q2Distribution);
-    plotDistribution(ui->plotUtilityDistribution, moment.utilityDistribution);
-    plotDistribution(ui->plotWealthDistribution, moment.wealthDistribution);
+    plotQ1Distribution->plotData(moment.q1Distribution);
+    plotQ2Distribution->plotData(moment.q2Distribution);
+    plotUtilityDistribution->plotData(moment.utilityDistribution);
+    plotWealthDistribution->plotData(moment.wealthDistribution);
 
     plotQ1Traded->plotDataAndPercentage(
                 history.q1Traded, time, simulation.amounts[0]);

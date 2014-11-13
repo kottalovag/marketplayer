@@ -4,12 +4,11 @@
 #include <QString>
 #include <QLabel>
 #include "model.h"
-#include "qcustomplot.h"
+#include "plot.h"
 
-class DataTimePlot
+class DataTimePlot : public Plot
 {
 protected:
-    QCustomPlot* plot;
     QLabel* label;
     QString labelPrefix;
 public:

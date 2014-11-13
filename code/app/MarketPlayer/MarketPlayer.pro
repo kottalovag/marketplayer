@@ -20,13 +20,17 @@ SOURCES += main.cpp\
     model/model.cpp \
     datatimeplot.cpp \
     plotutils.cpp \
-    datatimeplotwithpercentage.cpp
+    datatimeplotwithpercentage.cpp \
+    distributionplot.cpp \
+    plot.cpp
 
 HEADERS  += mainwindow.h \
     qcustomplot.h \
     model/model.h \
     datatimeplot.h \
     plotutils.h \
-    datatimeplotwithpercentage.h
+    datatimeplotwithpercentage.h \
+    distributionplot.h \
+    plot.h
 
 FORMS    += mainwindow.ui

@@ -2,13 +2,10 @@
 #include "plotutils.h"
 
 DataTimePlot::DataTimePlot(QCustomPlot* plot, QLabel *label, QString yLabel, QString labelPrefix)
-    : plot(plot)
+    : Plot(plot)
     , label(label)
     , labelPrefix(labelPrefix)
 {
-    this->plot = plot;
-    this->label = label;
-
     plot->xAxis->setLabel("Time");
     plot->yAxis->setLabel(yLabel);
 
@@ -42,9 +39,7 @@ void DataTimePlot::plotData(const DataTimePair &dataTime, int currentIdx)
 
 void DataTimePlot::reset()
 {
-    if (plot) {
-        cleanPlotData(plot);
-    }
+    Plot::reset();
     if (label) {
         label->setText(labelPrefix + ": 0");
     }
