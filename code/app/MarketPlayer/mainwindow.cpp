@@ -317,7 +317,7 @@ void MainWindow::plotDataTimeAndPercentage(QCustomPlot* plot, DataTimePair const
     plotDataTime(plot, dataTime, currentIdx);
 
     Amount_t percentageRangeMax = dataTime.max / max * 100;
-    plot->yAxis2->setRange(0.0, percentageRangeMax);
+    plot->yAxis2->setRange(0.0, percentageRangeMax * 1.1);
 }
 
 void MainWindow::updateOverview()
