@@ -13,24 +13,25 @@ TARGET = MarketPlayer
 TEMPLATE = app
 
 INCLUDEPATH += model
+INCLUDEPATH += plot
 
 SOURCES += main.cpp\
         mainwindow.cpp \
-    qcustomplot.cpp \
     model/model.cpp \
-    datatimeplot.cpp \
-    plotutils.cpp \
-    datatimeplotwithpercentage.cpp \
-    distributionplot.cpp \
-    plot.cpp
+    plot/qcustomplot.cpp \
+    plot/datatimeplot.cpp \
+    plot/plotutils.cpp \
+    plot/datatimeplotwithpercentage.cpp \
+    plot/distributionplot.cpp \
+    plot/plot.cpp
 
 HEADERS  += mainwindow.h \
-    qcustomplot.h \
     model/model.h \
-    datatimeplot.h \
-    plotutils.h \
-    datatimeplotwithpercentage.h \
-    distributionplot.h \
-    plot.h
+    plot/qcustomplot.h \
+    plot/datatimeplot.h \
+    plot/plotutils.h \
+    plot/datatimeplotwithpercentage.h \
+    plot/distributionplot.h \
+    plot/plot.h
 
 FORMS    += mainwindow.ui
