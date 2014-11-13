@@ -32,6 +32,8 @@ private:
     void plotEdgeworth(QCustomPlot* plot, Simulation::EdgeworthSituation const& situation);
     void plotNextSituation();
 
+    void setupSimulationByForm();
+
     void updateOverview();
     void loadHistoryMoment(int time);
     void updateTimeRange();
@@ -61,6 +63,8 @@ private slots:
     void on_actionSaveConfiguration_triggered();
 
     void on_actionLoadConfiguration_triggered();
+
+    void on_pushButtonClearHistory_clicked();
 
 private:
     Ui::MainWindow *ui;

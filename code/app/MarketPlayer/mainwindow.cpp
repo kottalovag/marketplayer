@@ -264,6 +264,36 @@ void MainWindow::plotEdgeworth(QCustomPlot* plot, Simulation::EdgeworthSituation
     plot->replot();
 }
 
+void MainWindow::setupSimulationByForm()
+{
+    simulation.setup(ui->lineEditSeed->text().toUInt(),
+                     ui->lineEditNumActors->text().toInt(),
+                     ui->lineEditSumQ1->text().toDouble(),
+                     ui->lineEditSumQ2->text().toDouble(),
+                     ui->lineEditAlfa1->text().toDouble(),
+                     ui->lineEditAlfa2->text().toDouble());
+
+    unique_ptr<AbstractOfferStrategy> offerStrategy;
+    if (ui->radioButtonOppositePareto->isChecked()) {
+        offerStrategy.reset(new OppositeParetoOfferStrategy);
+    } else if (ui->radioButtonRandomPareto->isChecked()) {
+        offerStrategy.reset(new RandomParetoOfferStrategy);
+    } else {
+        offerStrategy.reset(new RandomTriangleOfferStrategy);
+    }
+    simulation.offerStrategy = std::move(offerStrategy);
+
+    unique_ptr<AbstractAcceptanceStrategy> acceptanceStrategy;
+    if (ui->radioButtonWantAlways->isChecked()) {
+        acceptanceStrategy.reset(new AlwaysAcceptanceStrategy);
+    } else if (ui->radioButtonWantHigherGain->isChecked()) {
+        acceptanceStrategy.reset(new HigherGainAcceptanceStrategy);
+    } else {
+        acceptanceStrategy.reset(new HigherProportionAcceptanceStrategy);
+    }
+    simulation.acceptanceStrategy = std::move(acceptanceStrategy);
+}
+
 void MainWindow::updateOverview()
 {
     loadHistoryMoment(simulation.history.time - 1);
@@ -341,32 +371,7 @@ void MainWindow::on_actionApply_triggered()
 {
     on_actionPause_triggered();
 
-    simulation.setup(ui->lineEditSeed->text().toUInt(),
-                     ui->lineEditNumActors->text().toInt(),
-                     ui->lineEditSumQ1->text().toDouble(),
-                     ui->lineEditSumQ2->text().toDouble(),
-                     ui->lineEditAlfa1->text().toDouble(),
-                     ui->lineEditAlfa2->text().toDouble());
-
-    unique_ptr<AbstractOfferStrategy> offerStrategy;
-    if (ui->radioButtonOppositePareto->isChecked()) {
-        offerStrategy.reset(new OppositeParetoOfferStrategy);
-    } else if (ui->radioButtonRandomPareto->isChecked()) {
-        offerStrategy.reset(new RandomParetoOfferStrategy);
-    } else {
-        offerStrategy.reset(new RandomTriangleOfferStrategy);
-    }
-    simulation.offerStrategy = std::move(offerStrategy);
-
-    unique_ptr<AbstractAcceptanceStrategy> acceptanceStrategy;
-    if (ui->radioButtonWantAlways->isChecked()) {
-        acceptanceStrategy.reset(new AlwaysAcceptanceStrategy);
-    } else if (ui->radioButtonWantHigherGain->isChecked()) {
-        acceptanceStrategy.reset(new HigherGainAcceptanceStrategy);
-    } else {
-        acceptanceStrategy.reset(new HigherProportionAcceptanceStrategy);
-    }
-    simulation.acceptanceStrategy = std::move(acceptanceStrategy);
+    setupSimulationByForm();
 
     ui->progressBarRound->setMaximum(simulation.progress.getNum());
 
@@ -545,4 +550,9 @@ void MainWindow::on_actionLoadConfiguration_triggered()
             ui->radioButtonWantHigherProportion->setChecked(true);
         }
     }
+}
+
+void MainWindow::on_pushButtonClearHistory_clicked()
+{
+    ui->actionClearHistory->trigger();
 }
