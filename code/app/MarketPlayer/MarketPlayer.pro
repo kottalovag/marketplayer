@@ -27,7 +27,9 @@ SOURCES += main.cpp\
     model/modelutils.cpp \
     simulationcase.cpp \
     colormanager.cpp \
-    casenamemanager.cpp
+    casenamemanager.cpp \
+    model/strategy.cpp \
+    strategymapper.cpp
 
 HEADERS  += mainwindow.h \
     model/model.h \
@@ -40,6 +42,8 @@ HEADERS  += mainwindow.h \
     model/modelutils.h \
     simulationcase.h \
     colormanager.h \
-    casenamemanager.h
+    casenamemanager.h \
+    model/strategy.h \
+    strategymapper.h
 
 FORMS    += mainwindow.ui

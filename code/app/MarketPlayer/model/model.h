@@ -17,6 +17,7 @@
 #include <memory>
 
 #include "modelutils.h"
+#include "strategy.h"
 
 using std::tuple;
 using std::unique_ptr;
@@ -78,35 +79,6 @@ struct Simulation
         {}
     };
 
-    struct EdgeworthSituation {
-        ActorConstRef actor1, actor2;
-        IndifferenceCurve const curve1, curve2;
-        Amount_t const q1Sum, q2Sum;
-        Position const result;
-        bool const successful;
-
-        EdgeworthSituation(Simulation const& simulation, size_t const actor1Idx, size_t const actor2Idx,
-                           AbstractOfferStrategy& offerStrategy, AbstractAcceptanceStrategy &acceptanceStrategy, URNG &rng);
-
-        CurveFunction getCurve1Function() const;
-        CurveFunction getCurve2Function() const;
-        CurveFunction getParetoSetFunction() const;
-
-        Position getFixPoint() const {
-            return curve1.fixP;
-        }
-
-        Position calculateCurve1ParetoIntersection() const;
-        Position calculateCurve2ParetoIntersection() const;
-        Position calculateActor2Result() const;
-        Amount_t calculateOriginalUtility(ActorConstRef const& actor) const;
-        Amount_t calculateNewUtilityActor1() const;
-        Amount_t calculateNewUtilityActor2() const;
-
-    private:
-        Amount_t calculateParetoIntersectionQ1(IndifferenceCurve const& curve) const;
-    };
-
     struct Progress
     {
         void setup(size_t numActor, URNG &rng);
@@ -124,7 +96,7 @@ struct Simulation
         void shufflePermutation(URNG& rng);
 
         vector<size_t> permutation;
-        size_t actIdx;
+        vector<size_t>::size_type actIdx;
     };
 
     struct RoundInfo
@@ -134,6 +106,7 @@ struct Simulation
         Amount_t q1Traded, q2Traded, numSuccessful;
     };
 
+    URNG::result_type seed;
     mutable URNG innerUrng;
     History history;
     Progress progress;
@@ -152,7 +125,7 @@ struct Simulation
     Simulation& operator=(Simulation const& o);
 
     void setupResources(vector<Amount_t>& targetResources, Amount_t const sumAmount, size_t const numActors);
-    bool setup(int seed, size_t numActors, unsigned amountQ1, unsigned amountQ2, double alfa1, double alfa2);
+    bool setup(URNG::result_type seed, size_t numActors, unsigned amountQ1, unsigned amountQ2, double alfa1, double alfa2);
     bool performNextTrade();
     void performNextRound();
     const EdgeworthSituation &provideNextSituation();
@@ -167,60 +140,31 @@ private:
     EdgeworthSituation getNextSituation() const;
 };
 
-struct AbstractOfferStrategy
-{
-    virtual AbstractOfferStrategy* clone() const = 0;
-    virtual Position propose(Simulation::EdgeworthSituation const& situation, URNG& rng) const = 0;
-    virtual ~AbstractOfferStrategy(){}
-};
+struct EdgeworthSituation {
+    Simulation::ActorConstRef actor1, actor2;
+    IndifferenceCurve const curve1, curve2;
+    Amount_t const q1Sum, q2Sum;
+    Position const result;
+    bool const successful;
 
-struct OppositeParetoOfferStrategy: AbstractOfferStrategy
-{
-    CLONEABLE(OppositeParetoOfferStrategy)
-    virtual Position propose(Simulation::EdgeworthSituation const& situation, URNG& rng) const override;
-    virtual ~OppositeParetoOfferStrategy() {}
-};
+    EdgeworthSituation(Simulation const& simulation, size_t const actor1Idx, size_t const actor2Idx,
+                       AbstractOfferStrategy& offerStrategy, AbstractAcceptanceStrategy &acceptanceStrategy, URNG &rng);
 
-struct RandomParetoOfferStrategy: AbstractOfferStrategy
-{
-    CLONEABLE(RandomParetoOfferStrategy)
-    virtual Position propose(Simulation::EdgeworthSituation const& situation, URNG &rng) const override;
-    virtual ~RandomParetoOfferStrategy() {}
-};
+    CurveFunction getCurve1Function() const;
+    CurveFunction getCurve2Function() const;
+    CurveFunction getParetoSetFunction() const;
 
-struct RandomTriangleOfferStrategy: AbstractOfferStrategy
-{
-    CLONEABLE(RandomTriangleOfferStrategy)
-    virtual Position propose(Simulation::EdgeworthSituation const& situation, URNG& rng) const override;
-    virtual ~RandomTriangleOfferStrategy() {}
-};
+    Position getFixPoint() const {
+        return curve1.fixP;
+    }
 
-struct AbstractAcceptanceStrategy
-{
-    virtual AbstractAcceptanceStrategy* clone() const = 0;
-    virtual bool consider(Simulation::EdgeworthSituation const& situation) const = 0;
-    virtual ~AbstractAcceptanceStrategy(){}
-    bool considerGeneral(const Simulation::EdgeworthSituation &situation,
-                         std::function<Amount_t(Amount_t const&, Amount_t const&)> evaluate) const;
-};
+    Position calculateCurve1ParetoIntersection() const;
+    Position calculateCurve2ParetoIntersection() const;
+    Position calculateActor2Result() const;
+    Amount_t calculateOriginalUtility(Simulation::ActorConstRef const& actor) const;
+    Amount_t calculateNewUtilityActor1() const;
+    Amount_t calculateNewUtilityActor2() const;
 
-struct AlwaysAcceptanceStrategy: AbstractAcceptanceStrategy
-{
-    CLONEABLE(AlwaysAcceptanceStrategy)
-    virtual bool consider(Simulation::EdgeworthSituation const& situation) const override;
-    virtual ~AlwaysAcceptanceStrategy(){}
-};
-
-struct HigherGainAcceptanceStrategy: AbstractAcceptanceStrategy
-{
-    CLONEABLE(HigherGainAcceptanceStrategy)
-    virtual bool consider(Simulation::EdgeworthSituation const& situation) const override;
-    virtual ~HigherGainAcceptanceStrategy(){}
-};
-
-struct HigherProportionAcceptanceStrategy: AbstractAcceptanceStrategy
-{
-    CLONEABLE(HigherProportionAcceptanceStrategy)
-    virtual bool consider(Simulation::EdgeworthSituation const& situation) const override;
-    virtual ~HigherProportionAcceptanceStrategy(){}
+private:
+    Amount_t calculateParetoIntersectionQ1(IndifferenceCurve const& curve) const;
 };

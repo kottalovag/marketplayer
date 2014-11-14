@@ -32,13 +32,18 @@ public:
 private:
     int calculateSpeedInterval() const;
     void setupControlsStartup();
-    void resetControls();
+    void unmarkParameterControls();
+    void applyUIToApplicationStarted();
+    void applyUIToSimulationSetup();
 
     void setupEdgeworthBox();
-    void plotEdgeworth(QCustomPlot* plot, Simulation::EdgeworthSituation const& situation);
+    void plotEdgeworth(QCustomPlot* plot, EdgeworthSituation const& situation);
     void plotNextSituation();
 
-    void setupSimulationByForm();
+    bool setupSimulationByForm();
+    void setupSimulationByHistory(SimulationCase const& simulationCase);
+
+    void updateParameterControlsFromSimulation(Simulation const& simulation);
 
     void updateOverview();
     void loadHistoryMoment(int time);
@@ -50,9 +55,15 @@ private:
     void setButtonColor(QPushButton* button, QColor color);
     void removeCase(QString caseName);
     void removeSimulationCaseRows(std::function<bool(int)> pred);
+    bool isSimulationCaseRowSelected(int rowIdx) const;
+
+    void markLineEditChanged(QLineEdit* lineEdit, bool marked);
+    void markGroupBoxChanged(QGroupBox* groupBox, bool marked);
 
 private slots:
     void onSliderTimeRangeChanged(int min, int max);
+    void on_buttonGroupOfferStrategy_buttonClicked(int buttonID);
+    void on_buttonGroupAcceptanceStrategy_buttonClicked(int buttonID);
 
     void on_actionSaveEdgeworthDiagram_triggered();
 
@@ -86,6 +97,22 @@ private slots:
 
     void on_pushButtonDeleteSelectedOutput_clicked();
 
+    void on_pushButtonLoadSelectedOutput_clicked();
+
+    void on_lineEditNumActors_textChanged(const QString &arg1);
+
+    void on_lineEditSumQ1_textChanged(const QString &arg1);
+
+    void on_lineEditSumQ2_textChanged(const QString &arg1);
+
+    void on_lineEditAlfa1_textChanged(const QString &arg1);
+
+    void on_lineEditAlfa2_textChanged(const QString &arg1);
+
+    void on_lineEditSeed_textChanged(const QString &arg1);
+
+    void on_pushButtonRevertChanges_clicked();
+
 private:
     //the window handles ownership:
     Ui::MainWindow *ui;
@@ -106,11 +133,15 @@ private:
     unique_ptr<DistributionPlot> plotUtilityDistribution;
     unique_ptr<DistributionPlot> plotWealthDistribution;
 
+    std::map<QString, QRadioButton*> strategyMap;
+
     ColorManager colorManager;
     CaseNameManager caseNameManager;
     static const int caseNameColumnIdx = 0;
     static const int caseColorColumnIdx = 1;
     static const int checkBoxColumnIdx = 2;
+    static constexpr double defaultAlfa1 = 0.5;
+    static constexpr double defaultAlfa2 = 0.5;
 };
 
 #endif // MAINWINDOW_H

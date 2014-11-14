@@ -6,6 +6,8 @@
 
 #define CLONEABLE(Type) virtual Type* clone() const override { return new Type(*this); }
 
+#define VISITABLE_BY(VisitorClass) virtual void accept (VisitorClass& v) override { v.visit(*this); }
+
 typedef double Amount_t;
 
 typedef std::function<Amount_t(Amount_t)> CurveFunction;

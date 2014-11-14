@@ -4,6 +4,7 @@
 #include "model.h"
 #include "qcustomplot.h"
 #include "plotutils.h"
+#include "strategymapper.h"
 
 #include <iostream>
 #include <time.h>
@@ -24,29 +25,15 @@ MainWindow::MainWindow(QWidget *parent) :
 
     setupControlsStartup();
 
-    setupEdgeworthBox();
+    strategyMap[oppositeParetoValue] = ui->radioButtonOppositePareto;
+    strategyMap[randomParetoValue] = ui->radioButtonRandomPareto;
+    strategyMap[randomTriangleValue] = ui->radioButtonRandomTriangle;
 
-    plotQ1Traded.reset(new DataTimePlotWithPercentage(
-        ui->plotQ1Traded, ui->labelQ1Traded, "Q1 traded", "Q1 traded"));
-    plotQ2Traded.reset(new DataTimePlotWithPercentage(
-        ui->plotQ2Traded, ui->labelQ2Traded, "Q2 traded", "Q2 traded"));
-    plotSumUtility.reset(new DataTimePlot(
-        ui->plotSumUtility, ui->labelSumUtilities, "Sum of utilities", "Sum of utilities"));
-    plotNumSuccessfulTrades.reset(new DataTimePlotWithPercentage(
-        ui->plotNumSuccessfulTrades, ui->labelNumSuccessful, "Successful trades", "Successful trades"));
-    plotWealthDeviation.reset(new DataTimePlot(
-        ui->plotWealthDeviation, ui->labelWealthDeviation, "Wealth deviation", "Wealth deviation"));
+    strategyMap[alwaysValue] = ui->radioButtonWantAlways;
+    strategyMap[higherGainValue] = ui->radioButtonWantHigherGain;
+    strategyMap[higherProportionValue] = ui->radioButtonWantHigherProportion;
 
-    plotQ1Distribution.reset(new DistributionPlot(
-        ui->plotQ1Distribution, "Q1", "Actors"));
-    plotQ2Distribution.reset(new DistributionPlot(
-        ui->plotQ2Distribution, "Q2", "Actors"));
-    plotUtilityDistribution.reset(new DistributionPlot(
-        ui->plotUtilityDistribution, "Utiltiy", "Actors"));
-    plotWealthDistribution.reset(new DistributionPlot(
-        ui->plotWealthDistribution, "Wealth", "Actors"));
-
-    resetControls();
+    applyUIToApplicationStarted();
 
     debugShowPoint = [this](Position p){
         auto debugGraph = ui->plotEdgeworthBox->graph(5);
@@ -83,14 +70,14 @@ void MainWindow::setupControlsStartup()
     ui->lineEditNumActors->setValidator(resourceValidator);
 
     auto alfaValidator = new QDoubleValidator(std::numeric_limits<Amount_t>::epsilon(), 1, 10, this);
-    ui->lineEditAlfa1->setText("0.5");
+    ui->lineEditAlfa1->setText(QString::number(defaultAlfa1));
     ui->lineEditAlfa1->setValidator(alfaValidator);
     ui->lineEditAlfa1->setEnabled(false); //TODO resolve
-    ui->lineEditAlfa2->setText("0.5");
+    ui->lineEditAlfa2->setText(QString::number(defaultAlfa2));
     ui->lineEditAlfa2->setValidator(alfaValidator);
     ui->lineEditAlfa2->setEnabled(false); //TODO resolve
 
-    ui->lineEditSeed->setValidator(new QIntValidator(0,std::numeric_limits<unsigned>::max(), this));
+    ui->lineEditSeed->setValidator(new QIntValidator(0,std::numeric_limits<URNG::result_type>::max(), this));
     on_pushButtonRegenerateSeed_clicked();
 
     ui->radioButtonOppositePareto->setEnabled(true);
@@ -114,9 +101,49 @@ void MainWindow::setupControlsStartup()
 
     setupSpeedControls();
 
-    changeToTab(ui->tabWidget, ui->tabSetup);
+    setupEdgeworthBox();
 
-    updateCaseInput();
+    plotQ1Traded.reset(new DataTimePlotWithPercentage(
+        ui->plotQ1Traded, ui->labelQ1Traded, "Q1 traded", "Q1 traded"));
+    plotQ2Traded.reset(new DataTimePlotWithPercentage(
+        ui->plotQ2Traded, ui->labelQ2Traded, "Q2 traded", "Q2 traded"));
+    plotSumUtility.reset(new DataTimePlot(
+        ui->plotSumUtility, ui->labelSumUtilities, "Sum of utilities", "Sum of utilities"));
+    plotNumSuccessfulTrades.reset(new DataTimePlotWithPercentage(
+        ui->plotNumSuccessfulTrades, ui->labelNumSuccessful, "Successful trades", "Successful trades"));
+    plotWealthDeviation.reset(new DataTimePlot(
+        ui->plotWealthDeviation, ui->labelWealthDeviation, "Wealth deviation", "Wealth deviation"));
+
+    plotQ1Distribution.reset(new DistributionPlot(
+        ui->plotQ1Distribution, "Q1", "Actors"));
+    plotQ2Distribution.reset(new DistributionPlot(
+        ui->plotQ2Distribution, "Q2", "Actors"));
+    plotUtilityDistribution.reset(new DistributionPlot(
+        ui->plotUtilityDistribution, "Utiltiy", "Actors"));
+    plotWealthDistribution.reset(new DistributionPlot(
+        ui->plotWealthDistribution, "Wealth", "Actors"));
+}
+
+void MainWindow::unmarkParameterControls()
+{
+    for (auto item : {
+         ui->lineEditNumActors,
+         ui->lineEditSumQ1,
+         ui->lineEditSumQ2,
+         ui->lineEditAlfa1,
+         ui->lineEditAlfa2,
+         ui->lineEditSeed}
+         )
+    {
+        markLineEditChanged(item, false);
+    }
+    for (auto item : {
+         ui->groupBoxOfferStrategy,
+         ui->groupBoxAcceptanceStrategy}
+         )
+    {
+        markGroupBoxChanged(item, false);
+    }
 }
 
 int MainWindow::calculateSpeedInterval() const {
@@ -127,8 +154,15 @@ int MainWindow::calculateSpeedInterval() const {
     return maxTime * ratio;
 }
 
-void MainWindow::resetControls()
+void MainWindow::applyUIToApplicationStarted()
 {
+    changeToTab(ui->tabWidget, ui->tabSetup);
+
+    updateCaseInput();
+
+    ui->groupBoxHistory->setEnabled(false);
+    ui->actionSaveConfiguration->setEnabled(false);
+
     ui->sliderTime->setMinimum(0);
     ui->sliderTime->setMaximum(0);
 
@@ -155,6 +189,21 @@ void MainWindow::resetControls()
     ui->pushButtonPause->setEnabled(false);
     ui->actionNextTrade->setEnabled(false);
     ui->pushButtonNextTrade->setEnabled(false);
+}
+
+void MainWindow::applyUIToSimulationSetup()
+{
+    ui->progressBarRound->setMaximum(simulation.progress.getNum());
+
+    plotNextSituation();
+    updateOverview();
+    updateProgress();
+    updateTimeRange();
+
+    changeToTab(ui->tabWidget, ui->tabMainOverview);
+    ui->groupBoxHistory->setEnabled(true);
+    ui->actionSaveConfiguration->setEnabled(true);
+    unmarkParameterControls();
 }
 
 void MainWindow::setupEdgeworthBox()
@@ -219,7 +268,7 @@ void MainWindow::setupEdgeworthBox()
     debugGraph->setPen(debugPen);
 }
 
-void MainWindow::plotEdgeworth(QCustomPlot* plot, Simulation::EdgeworthSituation const& situation) {
+void MainWindow::plotEdgeworth(QCustomPlot* plot, EdgeworthSituation const& situation) {
     cleanPlotData(plot);
 
     Amount_t const q1RangeStart = std::numeric_limits<Amount_t>::epsilon();
@@ -267,36 +316,6 @@ void MainWindow::plotEdgeworth(QCustomPlot* plot, Simulation::EdgeworthSituation
     plot->replot();
 }
 
-void MainWindow::setupSimulationByForm()
-{
-    simulation.setup(ui->lineEditSeed->text().toUInt(),
-                     ui->lineEditNumActors->text().toInt(),
-                     ui->lineEditSumQ1->text().toDouble(),
-                     ui->lineEditSumQ2->text().toDouble(),
-                     ui->lineEditAlfa1->text().toDouble(),
-                     ui->lineEditAlfa2->text().toDouble());
-
-    unique_ptr<AbstractOfferStrategy> offerStrategy;
-    if (ui->radioButtonOppositePareto->isChecked()) {
-        offerStrategy.reset(new OppositeParetoOfferStrategy);
-    } else if (ui->radioButtonRandomPareto->isChecked()) {
-        offerStrategy.reset(new RandomParetoOfferStrategy);
-    } else {
-        offerStrategy.reset(new RandomTriangleOfferStrategy);
-    }
-    simulation.offerStrategy = std::move(offerStrategy);
-
-    unique_ptr<AbstractAcceptanceStrategy> acceptanceStrategy;
-    if (ui->radioButtonWantAlways->isChecked()) {
-        acceptanceStrategy.reset(new AlwaysAcceptanceStrategy);
-    } else if (ui->radioButtonWantHigherGain->isChecked()) {
-        acceptanceStrategy.reset(new HigherGainAcceptanceStrategy);
-    } else {
-        acceptanceStrategy.reset(new HigherProportionAcceptanceStrategy);
-    }
-    simulation.acceptanceStrategy = std::move(acceptanceStrategy);
-}
-
 void MainWindow::updateOverview()
 {
     loadHistoryMoment(simulation.history.time - 1);
@@ -335,8 +354,68 @@ void MainWindow::updateTimeRange()
 
 void MainWindow::plotNextSituation()
 {
-    Simulation::EdgeworthSituation const& nextSituation = simulation.provideNextSituation();
+    EdgeworthSituation const& nextSituation = simulation.provideNextSituation();
     plotEdgeworth(ui->plotEdgeworthBox, nextSituation);
+}
+
+bool MainWindow::setupSimulationByForm()
+{
+    bool success = simulation.setup(ui->lineEditSeed->text().toUInt(),
+                     ui->lineEditNumActors->text().toInt(),
+                     ui->lineEditSumQ1->text().toDouble(),
+                     ui->lineEditSumQ2->text().toDouble(),
+                     ui->lineEditAlfa1->text().toDouble(),
+                     ui->lineEditAlfa2->text().toDouble());
+
+    if (success) {
+        unique_ptr<AbstractOfferStrategy> offerStrategy;
+        if (ui->radioButtonOppositePareto->isChecked()) {
+            offerStrategy.reset(new OppositeParetoOfferStrategy);
+        } else if (ui->radioButtonRandomPareto->isChecked()) {
+            offerStrategy.reset(new RandomParetoOfferStrategy);
+        } else {
+            offerStrategy.reset(new RandomTriangleOfferStrategy);
+        }
+        simulation.offerStrategy = std::move(offerStrategy);
+
+        unique_ptr<AbstractAcceptanceStrategy> acceptanceStrategy;
+        if (ui->radioButtonWantAlways->isChecked()) {
+            acceptanceStrategy.reset(new AlwaysAcceptanceStrategy);
+        } else if (ui->radioButtonWantHigherGain->isChecked()) {
+            acceptanceStrategy.reset(new HigherGainAcceptanceStrategy);
+        } else {
+            acceptanceStrategy.reset(new HigherProportionAcceptanceStrategy);
+        }
+        simulation.acceptanceStrategy = std::move(acceptanceStrategy);
+    }
+    return success;
+}
+
+void MainWindow::setupSimulationByHistory(const SimulationCase &simulationCase)
+{
+    simulation = simulationCase.simulation;
+}
+
+void MainWindow::updateParameterControlsFromSimulation(const Simulation &simulation)
+{
+    ui->lineEditNumActors->setText(QString::number(simulation.numActors));
+    ui->lineEditSumQ1->setText(QString::number(simulation.amounts[0]));
+    ui->lineEditSumQ2->setText(QString::number(simulation.amounts[1]));
+    ui->lineEditAlfa1->setText(QString::number(simulation.utility.alfa1));
+    ui->lineEditAlfa2->setText(QString::number(simulation.utility.alfa2));
+    ui->lineEditSeed->setText(QString::number(simulation.seed));
+
+    OfferStrategyNameVisitor ov;
+    if (simulation.offerStrategy.get()) {
+        auto offerStrategyName = ov.getStrategyDescription(*simulation.offerStrategy);
+        strategyMap[offerStrategyName]->setChecked(true);
+    }
+
+    AcceptanceStrategyNameVisitor av;
+    if (simulation.acceptanceStrategy.get()) {
+        auto acceptanceStrategyName = av.getStrategyDescription(*simulation.acceptanceStrategy);
+        strategyMap[acceptanceStrategyName]->setChecked(true);
+    }
 }
 
 void MainWindow::updateProgress()
@@ -387,6 +466,34 @@ void MainWindow::removeSimulationCaseRows(std::function<bool (int)> pred)
     }
 }
 
+bool MainWindow::isSimulationCaseRowSelected(int rowIdx) const
+{
+    for (int j = 0; j < ui->tableWidgetCases->columnCount(); ++j) {
+        if (ui->tableWidgetCases->item(rowIdx, j)->isSelected()) {
+            return true;
+        }
+    }
+    return false;
+}
+
+void MainWindow::markLineEditChanged(QLineEdit *lineEdit, bool marked)
+{
+    QString style;
+    if (marked) {
+        style = "QLineEdit { background-color: yellow }";
+    }
+    lineEdit->setStyleSheet(style);
+}
+
+void MainWindow::markGroupBoxChanged(QGroupBox *groupBox, bool marked)
+{
+    QString style;
+    if (marked) {
+        style = "QGroupBox { background-color: yellow }";
+    }
+    groupBox->setStyleSheet(style);
+}
+
 void MainWindow::onSliderTimeRangeChanged(int min, int max)
 {
     if (ui->spinBoxTime->minimum() != min) {
@@ -395,6 +502,16 @@ void MainWindow::onSliderTimeRangeChanged(int min, int max)
     if (ui->spinBoxTime->maximum() != max) {
         ui->spinBoxTime->setMaximum(max);
     }
+}
+
+void MainWindow::on_buttonGroupOfferStrategy_buttonClicked(int)
+{
+    markGroupBoxChanged(ui->groupBoxOfferStrategy, true);
+}
+
+void MainWindow::on_buttonGroupAcceptanceStrategy_buttonClicked(int)
+{
+    markGroupBoxChanged(ui->groupBoxAcceptanceStrategy, true);
 }
 
 void MainWindow::on_actionSaveEdgeworthDiagram_triggered()
@@ -414,16 +531,14 @@ void MainWindow::on_actionApply_triggered()
 {
     on_actionPause_triggered();
 
-    setupSimulationByForm();
-
-    ui->progressBarRound->setMaximum(simulation.progress.getNum());
-
-    plotNextSituation();
-    updateOverview();
-    updateProgress();
-    updateTimeRange();
-
-    changeToTab(ui->tabWidget, ui->tabMainOverview);
+    bool success = setupSimulationByForm();
+    if (success) {
+        applyUIToSimulationSetup();
+    } else {
+        QMessageBox msgBox;
+        msgBox.setText("The simulation could not be setup using these parameters!");
+        msgBox.exec();
+    }
 }
 
 void MainWindow::on_actionNextRound_triggered()
@@ -514,14 +629,7 @@ QString numActorsKey = "num_actors";
 QString randomSeedKey = "random_seed";
 
 QString offerStrategyKey = "offer_strategy";
-QString oppositeParetoValue = "opposite pareto";
-QString randomParetoValue = "random pareto";
-QString randomTriangleValue = "random triangle";
-
 QString acceptanceStrategyKey = "acceptance_strategy";
-QString alwaysValue = "always";
-QString higherGainValue = "want higher gain";
-QString higherProportionValue = "want higher proportion";
 
 void MainWindow::on_actionSaveConfiguration_triggered()
 {
@@ -536,30 +644,14 @@ void MainWindow::on_actionSaveConfiguration_triggered()
         settings.endGroup();
 
         settings.beginGroup(simulationGroupKey);
-        settings.setValue(q1SumKey, ui->lineEditSumQ1->text());
-        settings.setValue(q2SumKey, ui->lineEditSumQ2->text());
-        settings.setValue(numActorsKey, ui->lineEditNumActors->text());
-        settings.setValue(randomSeedKey, ui->lineEditSeed->text());
-
-        QString offerStrategy = "";
-        if (ui->radioButtonOppositePareto->isChecked()) {
-            offerStrategy = oppositeParetoValue;
-        } else if (ui->radioButtonRandomPareto->isChecked()) {
-            offerStrategy = randomParetoValue;
-        } else if (ui->radioButtonRandomTriangle->isChecked()) {
-            offerStrategy = randomTriangleValue;
-        }
-        settings.setValue(offerStrategyKey, offerStrategy);
-
-        QString acceptanceStrategy = "";
-        if (ui->radioButtonWantAlways->isChecked()) {
-            acceptanceStrategy = alwaysValue;
-        } else if (ui->radioButtonWantHigherGain->isChecked()) {
-            acceptanceStrategy = higherGainValue;
-        } else if (ui->radioButtonWantHigherProportion->isChecked()) {
-            acceptanceStrategy = higherProportionValue;
-        }
-        settings.setValue(acceptanceStrategyKey, acceptanceStrategy);
+        settings.setValue(q1SumKey, QString::number(simulation.amounts[0]));
+        settings.setValue(q2SumKey, QString::number(simulation.amounts[1]));
+        settings.setValue(numActorsKey, QString::number(simulation.numActors));
+        settings.setValue(randomSeedKey, QString::number(simulation.seed));
+        OfferStrategyNameVisitor ov;
+        settings.setValue(offerStrategyKey, ov.getStrategyDescription(*simulation.offerStrategy));
+        AcceptanceStrategyNameVisitor av;
+        settings.setValue(acceptanceStrategyKey, av.getStrategyDescription(*simulation.acceptanceStrategy));
         settings.endGroup();
     }
 }
@@ -568,29 +660,31 @@ void MainWindow::on_actionLoadConfiguration_triggered()
 {
     QString fileName = QFileDialog::getOpenFileName(this, "Load configuration", "", "(*ini).");
     if (fileName != "") {
+        on_actionPause_triggered();
         QSettings settings(fileName, QSettings::IniFormat);
         settings.beginGroup(simulationGroupKey);
-        ui->lineEditSumQ1->setText(settings.value(q1SumKey).toString());
-        ui->lineEditSumQ2->setText(settings.value(q2SumKey).toString());
-        ui->lineEditNumActors->setText(settings.value(numActorsKey).toString());
-        ui->lineEditSeed->setText(settings.value(randomSeedKey).toString());
+
+        unsigned amountQ1 = settings.value(q1SumKey).toUInt();
+        unsigned amountQ2 = settings.value(q2SumKey).toUInt();
+        size_t numActors = settings.value(numActorsKey).toUInt();
+        URNG::result_type seed = settings.value(randomSeedKey).toUInt();
+        double alfa1 = defaultAlfa1;
+        double alfa2 = defaultAlfa2;
 
         QString offerStrategy = settings.value(offerStrategyKey).toString();
-        if (offerStrategy == oppositeParetoValue) {
-            ui->radioButtonOppositePareto->setChecked(true);
-        } else if (offerStrategy == randomParetoValue) {
-            ui->radioButtonRandomPareto->setChecked(true);
-        } else if (offerStrategy == randomTriangleValue) {
-            ui->radioButtonRandomTriangle->setChecked(true);
-        }
-
         QString acceptanceStrategy = settings.value(acceptanceStrategyKey).toString();
-        if (acceptanceStrategy == alwaysValue) {
-            ui->radioButtonWantAlways->setChecked(true);
-        } else if (acceptanceStrategy == higherGainValue) {
-            ui->radioButtonWantHigherGain->setChecked(true);
-        } else if (acceptanceStrategy == higherProportionValue) {
-            ui->radioButtonWantHigherProportion->setChecked(true);
+        settings.endGroup();
+
+        bool success = simulation.setup(seed, numActors, amountQ1, amountQ2, alfa1, alfa2);
+        if (success) {
+            simulation.offerStrategy = createOfferStrategy(offerStrategy);
+            simulation.acceptanceStrategy = createAcceptanceStrategy(acceptanceStrategy);
+            updateParameterControlsFromSimulation(simulation);
+            applyUIToSimulationSetup();
+        } else {
+            QMessageBox msgBox;
+            msgBox.setText("The simulation could not be setup using this configuration file!");
+            msgBox.exec();
         }
     }
 }
@@ -664,13 +758,59 @@ void MainWindow::on_pushButtonCaseColor_clicked()
 void MainWindow::on_pushButtonDeleteSelectedOutput_clicked()
 {
     removeSimulationCaseRows(
-        [this](int rowIdx) {
-            for (int j = 0; j < ui->tableWidgetCases->columnCount(); ++j) {
-                if (ui->tableWidgetCases->item(rowIdx, j)->isSelected()) {
-                    return true;
-                }
-            }
-            return false;
-        }
+                [this](int idx) { return isSimulationCaseRowSelected(idx); }
     );
+}
+
+void MainWindow::on_pushButtonLoadSelectedOutput_clicked()
+{
+    int idx = 0;
+    bool found = false;
+    while (!found && idx < ui->tableWidgetCases->rowCount()) {
+        found = isSimulationCaseRowSelected(idx);
+        if (!found) ++idx;
+    }
+    if (found) {
+        auto caseName = ui->tableWidgetCases->item(idx, caseNameColumnIdx)->text();
+        setupSimulationByHistory(simulationCases[caseName]);
+        updateParameterControlsFromSimulation(simulation);
+        applyUIToSimulationSetup();
+    }
+}
+
+//todo: mark only if really different from model
+void MainWindow::on_lineEditNumActors_textChanged(const QString &arg1)
+{
+    markLineEditChanged(ui->lineEditNumActors, true);
+}
+
+void MainWindow::on_lineEditSumQ1_textChanged(const QString &arg1)
+{
+    markLineEditChanged(ui->lineEditSumQ1, true);
+}
+
+void MainWindow::on_lineEditSumQ2_textChanged(const QString &arg1)
+{
+    markLineEditChanged(ui->lineEditSumQ2, true);
+}
+
+void MainWindow::on_lineEditAlfa1_textChanged(const QString &arg1)
+{
+    markLineEditChanged(ui->lineEditAlfa1, true);
+}
+
+void MainWindow::on_lineEditAlfa2_textChanged(const QString &arg1)
+{
+    markLineEditChanged(ui->lineEditAlfa2, true);
+}
+
+void MainWindow::on_lineEditSeed_textChanged(const QString &arg1)
+{
+    markLineEditChanged(ui->lineEditSeed, true);
+}
+
+void MainWindow::on_pushButtonRevertChanges_clicked()
+{
+    updateParameterControlsFromSimulation(simulation);
+    unmarkParameterControls();
 }

@@ -45,7 +45,7 @@ Amount_t IndifferenceCurve::getQ2(Amount_t q1) const {
     return fixP.q2 * pow(fixP.q1/q1, utility.alfa1/utility.alfa2);
 }
 
-Simulation::EdgeworthSituation::EdgeworthSituation(const Simulation& simulation, const size_t actor1Idx, const size_t actor2Idx,
+EdgeworthSituation::EdgeworthSituation(const Simulation& simulation, const size_t actor1Idx, const size_t actor2Idx,
         AbstractOfferStrategy& offerStrategy, AbstractAcceptanceStrategy& acceptanceStrategy, URNG& rng)
     : actor1(simulation, actor1Idx)
     , actor2(simulation, actor2Idx)
@@ -58,56 +58,56 @@ Simulation::EdgeworthSituation::EdgeworthSituation(const Simulation& simulation,
 {
 }
 
-CurveFunction Simulation::EdgeworthSituation::getCurve1Function() const {
+CurveFunction EdgeworthSituation::getCurve1Function() const {
     return [this](double q1){ return curve1.getQ2(q1); };
 }
 
-CurveFunction Simulation::EdgeworthSituation::getCurve2Function() const {
+CurveFunction EdgeworthSituation::getCurve2Function() const {
     return [this](double q1){ return q2Sum - curve2.getQ2(q1Sum - q1); };
 }
 
 //implicit hack: linear contract curve
-CurveFunction Simulation::EdgeworthSituation::getParetoSetFunction() const {
+CurveFunction EdgeworthSituation::getParetoSetFunction() const {
     return [this](double q1){ return q1 * q2Sum/q1Sum; };
 }
 
 //implicit hack of linear contract-curve
-Amount_t Simulation::EdgeworthSituation::calculateParetoIntersectionQ1(const IndifferenceCurve& curve) const {
+Amount_t EdgeworthSituation::calculateParetoIntersectionQ1(const IndifferenceCurve& curve) const {
     double const alfa1 = curve.utility.alfa1;
     double const alfa2 = curve.utility.alfa2;
     return pow(q1Sum/q2Sum * curve.fixP.q2 * pow(curve.fixP.q1, alfa1/alfa2),
                alfa2/(alfa1+alfa2));
 }
 
-Position Simulation::EdgeworthSituation::calculateCurve1ParetoIntersection() const {
+Position EdgeworthSituation::calculateCurve1ParetoIntersection() const {
     Amount_t const q1 = calculateParetoIntersectionQ1(curve1);
     Amount_t const q2 = getCurve1Function()(q1);
     return Position{q1, q2};
 }
 
 //implicit hack of linear contract curve
-Position Simulation::EdgeworthSituation::calculateCurve2ParetoIntersection() const {
+Position EdgeworthSituation::calculateCurve2ParetoIntersection() const {
     Amount_t const q1 = q1Sum - calculateParetoIntersectionQ1(curve2);
     Amount_t const q2 = getCurve2Function()(q1);
     return Position{q1, q2};
 }
 
-Position Simulation::EdgeworthSituation::calculateActor2Result() const
+Position EdgeworthSituation::calculateActor2Result() const
 {
     return {q1Sum - result.q1, q2Sum - result.q2};
 }
 
-Amount_t Simulation::EdgeworthSituation::calculateOriginalUtility(const ActorConstRef &actor) const
+Amount_t EdgeworthSituation::calculateOriginalUtility(const Simulation::ActorConstRef &actor) const
 {
     return curve1.utility.compute(actor.q1, actor.q2);
 }
 
-Amount_t Simulation::EdgeworthSituation::calculateNewUtilityActor1() const
+Amount_t EdgeworthSituation::calculateNewUtilityActor1() const
 {
     return curve1.utility.compute(result.q1, result.q2);
 }
 
-Amount_t Simulation::EdgeworthSituation::calculateNewUtilityActor2() const
+Amount_t EdgeworthSituation::calculateNewUtilityActor2() const
 {
     Position const actor2NewPos = calculateActor2Result();
     return curve2.utility.compute(actor2NewPos.q1, actor2NewPos.q2);
@@ -150,6 +150,7 @@ bool Simulation::Progress::isFinished() const
 
 Simulation &Simulation::operator=(const Simulation &o)
 {
+    seed = o.seed;
     innerUrng = o.innerUrng;
     history = o.history;
     progress = o.progress;
@@ -192,8 +193,9 @@ void Simulation::setupResources(vector<Amount_t>& targetResources, const Amount_
     }
 }
 
-bool Simulation::setup(int seed, size_t numActors, unsigned amountQ1, unsigned amountQ2, double alfa1, double alfa2) {
+bool Simulation::setup(URNG::result_type seed, size_t numActors, unsigned amountQ1, unsigned amountQ2, double alfa1, double alfa2) {
     if (numActors%2 != 0) return false;
+    this->seed = seed;
     innerUrng.seed(seed);
     history.reset();
     amounts.resize(0);
@@ -204,7 +206,7 @@ bool Simulation::setup(int seed, size_t numActors, unsigned amountQ1, unsigned a
     utility.alfa1 = alfa1;
     utility.alfa2 = alfa2;
     progress.setup(numActors, innerUrng);
-    for (size_t idx = 0; idx < amounts.size(); ++idx) {
+    for (vector<Amount_t>::size_type idx = 0; idx < amounts.size(); ++idx) {
         setupResources(resources[idx], amounts[idx], numActors);
     }
     q2Price = amounts[0] / amounts[1];
@@ -213,14 +215,14 @@ bool Simulation::setup(int seed, size_t numActors, unsigned amountQ1, unsigned a
     return true;
 }
 
-Simulation::EdgeworthSituation Simulation::getNextSituation() const
+EdgeworthSituation Simulation::getNextSituation() const
 {
     size_t actor1Idx, actor2Idx;
     std::tie(actor1Idx, actor2Idx) = progress.getCurrentPair();
     return EdgeworthSituation(*this, actor1Idx, actor2Idx, *offerStrategy, *acceptanceStrategy, innerUrng);
 }
 
-Simulation::EdgeworthSituation const& Simulation::provideNextSituation()
+EdgeworthSituation const& Simulation::provideNextSituation()
 {
     if (!previewedSituation.get()) {
         size_t actor1Idx, actor2Idx;
@@ -319,82 +321,6 @@ vector<Amount_t> Simulation::computeActors(std::function<Amount_t(ActorConstRef 
         result.push_back(evaluatorFn(actor));
     }
     return result;
-}
-
-Position OppositeParetoOfferStrategy::propose(Simulation::EdgeworthSituation const& situation, URNG&) const
-{
-    Position const p2 = situation.calculateCurve2ParetoIntersection();
-    //debugShowPoint(p2);
-    return p2;
-}
-
-Position RandomParetoOfferStrategy::propose(Simulation::EdgeworthSituation const& situation, URNG& rng) const
-{
-    Position const p2 = situation.calculateCurve2ParetoIntersection();
-    Position const p1 = situation.calculateCurve1ParetoIntersection();
-    double const factor = std::uniform_real_distribution<double>(0.0, 1.0)(rng);
-    auto const result = p1 + (p2 - p1) * factor;
-    //debugShowPoint(result);
-    return result;
-}
-
-Position RandomTriangleOfferStrategy::propose(Simulation::EdgeworthSituation const& situation, URNG& rng) const
-{
-    Position const p0 = situation.getFixPoint();
-    Position const p1 = situation.calculateCurve1ParetoIntersection();
-    Position const p2 = situation.calculateCurve2ParetoIntersection();
-
-    std::uniform_real_distribution<double> udist(0.0, 1.0);
-
-    //we pick a point as if in a paralelogram for sake of uniformity
-    auto const v01 = (p1 - p0);
-    auto const v02 = (p2 - p0);
-    double const factor1 = udist(rng);
-    double const factor2 = udist(rng);
-    Position px = p0 + v01*factor1 + v02*factor2;
-
-    //if the point falls in the wrong half
-    //  then we do point reflection around p1-p2 side's midde point
-    //  to end up in the desired half
-    if (!isPointInTriangle(p0, p1, p2, px)) {
-        auto origo = p1 + (p2 - p1) * 0.5;
-        px = px + (origo - px) * 2.0;
-    }
-    //debugShowPoint(px);
-    return px;
-}
-
-bool AlwaysAcceptanceStrategy::consider(Simulation::EdgeworthSituation const&) const
-{
-    return true;
-}
-
-bool AbstractAcceptanceStrategy::considerGeneral(Simulation::EdgeworthSituation const& situation,
-                                          std::function<Amount_t(const Amount_t &, const Amount_t &)> evaluate) const
-{
-    auto const actor1Utility = situation.calculateOriginalUtility(situation.actor1);
-    auto const actor2Utility = situation.calculateOriginalUtility(situation.actor2);
-    auto const actor1NewUtility = situation.calculateNewUtilityActor1();
-    auto const actor2NewUtility = situation.calculateNewUtilityActor2();
-    auto const actor1Gain = evaluate(actor1NewUtility, actor1Utility);
-    auto const actor2Gain = evaluate(actor2NewUtility, actor2Utility);
-    return actor1Gain <= actor2Gain;
-}
-
-bool HigherGainAcceptanceStrategy::consider(Simulation::EdgeworthSituation const& situation) const
-{
-    return considerGeneral(situation,
-                           [](Amount_t const& newUtility, Amount_t const& originalUtility) {
-        return newUtility - originalUtility;
-    });
-}
-
-bool HigherProportionAcceptanceStrategy::consider(Simulation::EdgeworthSituation const& situation) const
-{
-    return considerGeneral(situation,
-                           [](Amount_t const& newUtility, Amount_t const& originalUtility) {
-        return newUtility / originalUtility;
-    });
 }
 
 History::History(): time(0) {}
