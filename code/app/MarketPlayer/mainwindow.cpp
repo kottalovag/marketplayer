@@ -556,3 +556,17 @@ void MainWindow::on_pushButtonClearHistory_clicked()
 {
     ui->actionClearHistory->trigger();
 }
+
+void MainWindow::on_pushButtonAddCurrentOutput_clicked()
+{
+    auto caseName = ui->lineEditCaseName->text();
+    if (caseName == "" || simulationCases.find(caseName) != simulationCases.end()) {
+        QMessageBox msgBox;
+        msgBox.setText("You have to enter a non-empty unique name for the case");
+        msgBox.exec();
+    } else {
+        auto& simulationCase = simulationCases[caseName];
+        simulationCase.simulation = simulation;
+        simulationCase.color = ui->pushButtonCaseColor->palette().button().color();
+    }
+}

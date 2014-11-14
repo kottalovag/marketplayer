@@ -2,11 +2,14 @@
 #define MAINWINDOW_H
 
 #include <QMainWindow>
+#include <memory>
+#include <map>
 
 #include "model.h"
 #include "datatimeplot.h"
 #include "datatimeplotwithpercentage.h"
 #include "distributionplot.h"
+#include "simulationcase.h"
 
 namespace Ui {
 class MainWindow;
@@ -66,10 +69,17 @@ private slots:
 
     void on_pushButtonClearHistory_clicked();
 
+    void on_pushButtonAddCurrentOutput_clicked();
+
 private:
+    //the window handles ownership:
     Ui::MainWindow *ui;
-    Simulation simulation;
     QTimer* timer;
+    //
+
+    Simulation simulation;
+    std::map<QString, SimulationCase> simulationCases;
+
     unique_ptr<DataTimePlotWithPercentage> plotQ1Traded;
     unique_ptr<DataTimePlotWithPercentage> plotQ2Traded;
     unique_ptr<DataTimePlot> plotSumUtility;

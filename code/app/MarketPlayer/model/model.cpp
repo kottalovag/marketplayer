@@ -58,16 +58,16 @@ Simulation::EdgeworthSituation::EdgeworthSituation(const Simulation& simulation,
 {
 }
 
-std::function<Amount_t (Amount_t)> Simulation::EdgeworthSituation::getCurve1Function() const {
+CurveFunction Simulation::EdgeworthSituation::getCurve1Function() const {
     return [this](double q1){ return curve1.getQ2(q1); };
 }
 
-std::function<Amount_t (Amount_t)> Simulation::EdgeworthSituation::getCurve2Function() const {
+CurveFunction Simulation::EdgeworthSituation::getCurve2Function() const {
     return [this](double q1){ return q2Sum - curve2.getQ2(q1Sum - q1); };
 }
 
 //implicit hack: linear contract curve
-std::function<Amount_t (Amount_t)> Simulation::EdgeworthSituation::getParetoSetFunction() const {
+CurveFunction Simulation::EdgeworthSituation::getParetoSetFunction() const {
     return [this](double q1){ return q1 * q2Sum/q1Sum; };
 }
 
@@ -146,6 +146,37 @@ void Simulation::Progress::shufflePermutation(URNG &rng) {
 bool Simulation::Progress::isFinished() const
 {
     return actIdx == permutation.size();
+}
+
+Simulation &Simulation::operator=(const Simulation &o)
+{
+    innerUrng = o.innerUrng;
+    history = o.history;
+    progress = o.progress;
+    utility = o.utility;
+    resources = o.resources;
+    numActors = o.numActors;
+    amounts = o.amounts;
+    roundInfo = o.roundInfo;
+    q2Price = o.q2Price;
+
+    if (o.offerStrategy.get()) {
+        offerStrategy.reset(o.offerStrategy->clone());
+    } else {
+        offerStrategy.reset();
+    }
+    if (o.acceptanceStrategy) {
+        acceptanceStrategy.reset(o.acceptanceStrategy->clone());
+    } else {
+        acceptanceStrategy.reset();
+    }
+
+    //Intentionally reset to zero as this is just a view.
+    //However, warning: if Simulation gets copied while in the middle of a step-by-step Edgeworth,
+    //then (sigh) we will lose the random and the simulation will continue going a different course.
+    previewedSituation.reset();
+
+    return *this;
 }
 
 void Simulation::setupResources(vector<Amount_t>& targetResources, const Amount_t sumAmount, const size_t numActors) {

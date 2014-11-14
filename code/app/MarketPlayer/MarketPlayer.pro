@@ -24,7 +24,8 @@ SOURCES += main.cpp\
     plot/datatimeplotwithpercentage.cpp \
     plot/distributionplot.cpp \
     plot/plot.cpp \
-    model/modelutils.cpp
+    model/modelutils.cpp \
+    simulationcase.cpp
 
 HEADERS  += mainwindow.h \
     model/model.h \
@@ -34,6 +35,7 @@ HEADERS  += mainwindow.h \
     plot/datatimeplotwithpercentage.h \
     plot/distributionplot.h \
     plot/plot.h \
-    model/modelutils.h
+    model/modelutils.h \
+    simulationcase.h
 
 FORMS    += mainwindow.ui

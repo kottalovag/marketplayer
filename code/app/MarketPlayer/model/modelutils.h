@@ -4,7 +4,11 @@
 #include <functional>
 #include <QVector>
 
+#define CLONEABLE(Type) virtual Type* clone() const override { return new Type(*this); }
+
 typedef double Amount_t;
+
+typedef std::function<Amount_t(Amount_t)> CurveFunction;
 
 template<typename E>
 //using vector = std::vector<E>;

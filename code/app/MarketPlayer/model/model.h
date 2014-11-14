@@ -87,9 +87,10 @@ struct Simulation
 
         EdgeworthSituation(Simulation const& simulation, size_t const actor1Idx, size_t const actor2Idx,
                            AbstractOfferStrategy& offerStrategy, AbstractAcceptanceStrategy &acceptanceStrategy, URNG &rng);
-        std::function<Amount_t(Amount_t)> getCurve1Function() const;
-        std::function<Amount_t(Amount_t)> getCurve2Function() const;
-        std::function<Amount_t(Amount_t)> getParetoSetFunction() const;
+
+        CurveFunction getCurve1Function() const;
+        CurveFunction getCurve2Function() const;
+        CurveFunction getParetoSetFunction() const;
 
         Position getFixPoint() const {
             return curve1.fixP;
@@ -146,6 +147,10 @@ struct Simulation
     unique_ptr<AbstractOfferStrategy> offerStrategy;
     unique_ptr<AbstractAcceptanceStrategy> acceptanceStrategy;
 
+    Simulation(){}
+    Simulation(Simulation const& o) { *this = o; }
+    Simulation& operator=(Simulation const& o);
+
     void setupResources(vector<Amount_t>& targetResources, Amount_t const sumAmount, size_t const numActors);
     bool setup(int seed, size_t numActors, unsigned amountQ1, unsigned amountQ2, double alfa1, double alfa2);
     bool performNextTrade();
@@ -164,30 +169,35 @@ private:
 
 struct AbstractOfferStrategy
 {
+    virtual AbstractOfferStrategy* clone() const = 0;
     virtual Position propose(Simulation::EdgeworthSituation const& situation, URNG& rng) const = 0;
     virtual ~AbstractOfferStrategy(){}
 };
 
 struct OppositeParetoOfferStrategy: AbstractOfferStrategy
 {
+    CLONEABLE(OppositeParetoOfferStrategy)
     virtual Position propose(Simulation::EdgeworthSituation const& situation, URNG& rng) const override;
     virtual ~OppositeParetoOfferStrategy() {}
 };
 
 struct RandomParetoOfferStrategy: AbstractOfferStrategy
 {
+    CLONEABLE(RandomParetoOfferStrategy)
     virtual Position propose(Simulation::EdgeworthSituation const& situation, URNG &rng) const override;
     virtual ~RandomParetoOfferStrategy() {}
 };
 
 struct RandomTriangleOfferStrategy: AbstractOfferStrategy
 {
+    CLONEABLE(RandomTriangleOfferStrategy)
     virtual Position propose(Simulation::EdgeworthSituation const& situation, URNG& rng) const override;
     virtual ~RandomTriangleOfferStrategy() {}
 };
 
 struct AbstractAcceptanceStrategy
 {
+    virtual AbstractAcceptanceStrategy* clone() const = 0;
     virtual bool consider(Simulation::EdgeworthSituation const& situation) const = 0;
     virtual ~AbstractAcceptanceStrategy(){}
     bool considerGeneral(const Simulation::EdgeworthSituation &situation,
@@ -196,18 +206,21 @@ struct AbstractAcceptanceStrategy
 
 struct AlwaysAcceptanceStrategy: AbstractAcceptanceStrategy
 {
+    CLONEABLE(AlwaysAcceptanceStrategy)
     virtual bool consider(Simulation::EdgeworthSituation const& situation) const override;
     virtual ~AlwaysAcceptanceStrategy(){}
 };
 
 struct HigherGainAcceptanceStrategy: AbstractAcceptanceStrategy
 {
+    CLONEABLE(HigherGainAcceptanceStrategy)
     virtual bool consider(Simulation::EdgeworthSituation const& situation) const override;
     virtual ~HigherGainAcceptanceStrategy(){}
 };
 
 struct HigherProportionAcceptanceStrategy: AbstractAcceptanceStrategy
 {
+    CLONEABLE(HigherProportionAcceptanceStrategy)
     virtual bool consider(Simulation::EdgeworthSituation const& situation) const override;
     virtual ~HigherProportionAcceptanceStrategy(){}
 };
