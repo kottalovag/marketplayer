@@ -670,6 +670,7 @@ void MainWindow::on_pushButtonDeleteSelectedOutput_clicked()
                     return true;
                 }
             }
+            return false;
         }
     );
 }
