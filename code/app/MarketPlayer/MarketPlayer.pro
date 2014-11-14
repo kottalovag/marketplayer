@@ -25,7 +25,9 @@ SOURCES += main.cpp\
     plot/distributionplot.cpp \
     plot/plot.cpp \
     model/modelutils.cpp \
-    simulationcase.cpp
+    simulationcase.cpp \
+    colormanager.cpp \
+    casenamemanager.cpp
 
 HEADERS  += mainwindow.h \
     model/model.h \
@@ -36,6 +38,8 @@ HEADERS  += mainwindow.h \
     plot/distributionplot.h \
     plot/plot.h \
     model/modelutils.h \
-    simulationcase.h
+    simulationcase.h \
+    colormanager.h \
+    casenamemanager.h
 
 FORMS    += mainwindow.ui

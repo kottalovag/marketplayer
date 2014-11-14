@@ -8,6 +8,7 @@
 #include <iostream>
 #include <time.h>
 #include <QFileDialog>
+#include <QMap>
 
 using std::cout;
 using std::endl;
@@ -114,6 +115,8 @@ void MainWindow::setupControlsStartup()
     setupSpeedControls();
 
     changeToTab(ui->tabWidget, ui->tabSetup);
+
+    updateCaseInput();
 }
 
 int MainWindow::calculateSpeedInterval() const {
@@ -344,6 +347,46 @@ void MainWindow::updateProgress()
     ui->progressBarRound->setValue(simulation.progress.getDone());
 }
 
+void MainWindow::updateCaseInput()
+{
+    QString caseName;
+    do {
+        caseName = caseNameManager.provideNextCaseName();
+    } while (simulationCases.find(caseName) != simulationCases.end());
+    ui->lineEditCaseName->setText(caseName);
+    setButtonColor(ui->pushButtonCaseColor, colorManager.provideNextColor());
+}
+
+QColor MainWindow::getButtonColor(QPushButton *button) const
+{
+    return button->palette().button().color();
+}
+
+void MainWindow::setButtonColor(QPushButton *button, QColor color)
+{
+    QString style("QPushButton { background-color: rgb(%1, %2, %3) }");
+    button->setStyleSheet(style.arg(color.red()).arg(color.green()).arg(color.blue()));
+}
+
+void MainWindow::removeCase(QString caseName)
+{
+    //todo plot sync
+    auto foundElement = simulationCases.find(caseName);
+    simulationCases.erase(foundElement);
+}
+
+void MainWindow::removeSimulationCaseRows(std::function<bool (int)> pred)
+{
+    for (int i = 0; i < ui->tableWidgetCases->rowCount(); ++i) {
+        if (pred(i)) {
+            auto caseName = ui->tableWidgetCases->item(i, caseNameColumnIdx)->text();
+            removeCase(caseName);
+            ui->tableWidgetCases->removeRow(i);
+            --i; //repeat this index in the loop
+        }
+    }
+}
+
 void MainWindow::onSliderTimeRangeChanged(int min, int max)
 {
     if (ui->spinBoxTime->minimum() != min) {
@@ -554,7 +597,10 @@ void MainWindow::on_actionLoadConfiguration_triggered()
 
 void MainWindow::on_pushButtonClearHistory_clicked()
 {
-    ui->actionClearHistory->trigger();
+    removeSimulationCaseRows([](int){return true;}); //remove all lines
+    colorManager.reset();
+    caseNameManager.reset();
+    updateCaseInput();
 }
 
 void MainWindow::on_pushButtonAddCurrentOutput_clicked()
@@ -567,6 +613,63 @@ void MainWindow::on_pushButtonAddCurrentOutput_clicked()
     } else {
         auto& simulationCase = simulationCases[caseName];
         simulationCase.simulation = simulation;
-        simulationCase.color = ui->pushButtonCaseColor->palette().button().color();
+        simulationCase.color = getButtonColor(ui->pushButtonCaseColor);
+        simulationCase.isShown = true;
+
+        auto const rowIdx = ui->tableWidgetCases->rowCount();
+        ui->tableWidgetCases->insertRow(rowIdx);
+
+        static auto disableItem = [](QTableWidgetItem* item){
+            item->setFlags(item->flags() & ~Qt::ItemIsEditable);
+        };
+        auto nameItem = new QTableWidgetItem(caseName);
+        disableItem(nameItem);
+        ui->tableWidgetCases->setItem(rowIdx, caseNameColumnIdx, nameItem);
+
+        auto coloredItem = new QTableWidgetItem("");
+        disableItem(coloredItem);
+        coloredItem->setBackgroundColor(simulationCase.color);
+        ui->tableWidgetCases->setItem(rowIdx, caseColorColumnIdx, coloredItem);
+
+        auto checkItem = new QTableWidgetItem("");
+        disableItem(checkItem);
+        checkItem->setCheckState(simulationCase.isShown ? Qt::Checked : Qt::Unchecked);
+        ui->tableWidgetCases->setItem(rowIdx, checkBoxColumnIdx, checkItem);
+
+        updateCaseInput();
+
+        //todo plot sync
     }
+}
+
+void MainWindow::on_tableWidgetCases_cellChanged(int row, int column)
+{
+    if (column == checkBoxColumnIdx) {
+        auto const caseName = ui->tableWidgetCases->item(row, caseNameColumnIdx)->text();
+        auto const checkItem = ui->tableWidgetCases->item(row, column);
+        auto const isChecked = checkItem->checkState() == Qt::Checked;
+        simulationCases[caseName].isShown = isChecked;
+        //todo plot sync
+    }
+}
+
+void MainWindow::on_pushButtonCaseColor_clicked()
+{
+    auto color = QColorDialog::getColor(getButtonColor(ui->pushButtonCaseColor));
+    if (color.isValid()) {
+        setButtonColor(ui->pushButtonCaseColor, color);
+    }
+}
+
+void MainWindow::on_pushButtonDeleteSelectedOutput_clicked()
+{
+    removeSimulationCaseRows(
+        [this](int rowIdx) {
+            for (int j = 0; j < ui->tableWidgetCases->columnCount(); ++j) {
+                if (ui->tableWidgetCases->item(rowIdx, j)->isSelected()) {
+                    return true;
+                }
+            }
+        }
+    );
 }

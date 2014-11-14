@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>787</width>
-    <height>679</height>
+    <height>690</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -369,13 +369,19 @@
             </property>
             <layout class="QVBoxLayout" name="verticalLayout_18">
              <item>
-              <widget class="QTableWidget" name="tableWidget">
+              <widget class="QTableWidget" name="tableWidgetCases">
                <property name="dragEnabled">
                 <bool>false</bool>
                </property>
                <property name="columnCount">
-                <number>2</number>
+                <number>3</number>
                </property>
+               <attribute name="horizontalHeaderCascadingSectionResizes">
+                <bool>false</bool>
+               </attribute>
+               <attribute name="horizontalHeaderStretchLastSection">
+                <bool>true</bool>
+               </attribute>
                <column>
                 <property name="text">
                  <string>Case</string>
@@ -384,6 +390,11 @@
                <column>
                 <property name="text">
                  <string>Color</string>
+                </property>
+               </column>
+               <column>
+                <property name="text">
+                 <string>Shown</string>
                 </property>
                </column>
               </widget>
@@ -432,6 +443,13 @@
                   </property>
                  </widget>
                 </item>
+                <item>
+                 <widget class="QPushButton" name="pushButtonDeleteSelectedOutput">
+                  <property name="text">
+                   <string>Delete selected output(s)</string>
+                  </property>
+                 </widget>
+                </item>
                </layout>
               </widget>
              </item>
@@ -441,19 +459,6 @@
                 <string>Clear history</string>
                </property>
               </widget>
-             </item>
-             <item>
-              <spacer name="verticalSpacer_2">
-               <property name="orientation">
-                <enum>Qt::Vertical</enum>
-               </property>
-               <property name="sizeHint" stdset="0">
-                <size>
-                 <width>20</width>
-                 <height>40</height>
-                </size>
-               </property>
-              </spacer>
              </item>
             </layout>
            </widget>
@@ -957,11 +962,6 @@
   <action name="actionLoadConfiguration">
    <property name="text">
     <string>Load Configuration...</string>
-   </property>
-  </action>
-  <action name="actionClearHistory">
-   <property name="text">
-    <string>Clear History</string>
    </property>
   </action>
  </widget>

@@ -4,12 +4,15 @@
 #include <QMainWindow>
 #include <memory>
 #include <map>
+#include <functional>
 
 #include "model.h"
 #include "datatimeplot.h"
 #include "datatimeplotwithpercentage.h"
 #include "distributionplot.h"
 #include "simulationcase.h"
+#include "colormanager.h"
+#include "casenamemanager.h"
 
 namespace Ui {
 class MainWindow;
@@ -42,6 +45,12 @@ private:
     void updateTimeRange();
     void updateProgress();
 
+    void updateCaseInput();
+    QColor getButtonColor(QPushButton* button) const;
+    void setButtonColor(QPushButton* button, QColor color);
+    void removeCase(QString caseName);
+    void removeSimulationCaseRows(std::function<bool(int)> pred);
+
 private slots:
     void onSliderTimeRangeChanged(int min, int max);
 
@@ -71,6 +80,12 @@ private slots:
 
     void on_pushButtonAddCurrentOutput_clicked();
 
+    void on_tableWidgetCases_cellChanged(int row, int column);
+
+    void on_pushButtonCaseColor_clicked();
+
+    void on_pushButtonDeleteSelectedOutput_clicked();
+
 private:
     //the window handles ownership:
     Ui::MainWindow *ui;
@@ -90,6 +105,12 @@ private:
     unique_ptr<DistributionPlot> plotQ2Distribution;
     unique_ptr<DistributionPlot> plotUtilityDistribution;
     unique_ptr<DistributionPlot> plotWealthDistribution;
+
+    ColorManager colorManager;
+    CaseNameManager caseNameManager;
+    static const int caseNameColumnIdx = 0;
+    static const int caseColorColumnIdx = 1;
+    static const int checkBoxColumnIdx = 2;
 };
 
 #endif // MAINWINDOW_H

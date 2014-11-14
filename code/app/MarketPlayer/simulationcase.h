@@ -8,6 +8,7 @@ struct SimulationCase
 {
     Simulation simulation;
     QColor color;
+    bool isShown;
 };
 
 #endif // SIMULATIONCASE_H
