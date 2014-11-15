@@ -56,6 +56,7 @@ private:
     void removeCase(QString caseName);
     void removeSimulationCaseRows(std::function<bool(int)> pred);
     bool isSimulationCaseRowSelected(int rowIdx) const;
+    int getFirstSelectedSimulationCaseRow() const;
 
     void markLineEditChanged(QLineEdit* lineEdit, bool marked);
     void markGroupBoxChanged(QGroupBox* groupBox, bool marked);
@@ -112,6 +113,8 @@ private slots:
     void on_lineEditSeed_textChanged(const QString &arg1);
 
     void on_pushButtonRevertChanges_clicked();
+
+    void on_tableWidgetCases_itemSelectionChanged();
 
 private:
     //the window handles ownership:

@@ -326,7 +326,7 @@
              <item>
               <widget class="QPushButton" name="pushButtonApply">
                <property name="text">
-                <string>Apply</string>
+                <string>Apply and restart</string>
                </property>
               </widget>
              </item>

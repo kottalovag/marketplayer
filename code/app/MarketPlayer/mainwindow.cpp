@@ -476,6 +476,21 @@ bool MainWindow::isSimulationCaseRowSelected(int rowIdx) const
     return false;
 }
 
+int MainWindow::getFirstSelectedSimulationCaseRow() const
+{
+    int idx = 0;
+    bool found = false;
+    while (!found && idx < ui->tableWidgetCases->rowCount()) {
+        found = isSimulationCaseRowSelected(idx);
+        if (!found) ++idx;
+    }
+    if (found) {
+        return idx;
+    } else {
+        return -1;
+    }
+}
+
 void MainWindow::markLineEditChanged(QLineEdit *lineEdit, bool marked)
 {
     QString style;
@@ -764,13 +779,8 @@ void MainWindow::on_pushButtonDeleteSelectedOutput_clicked()
 
 void MainWindow::on_pushButtonLoadSelectedOutput_clicked()
 {
-    int idx = 0;
-    bool found = false;
-    while (!found && idx < ui->tableWidgetCases->rowCount()) {
-        found = isSimulationCaseRowSelected(idx);
-        if (!found) ++idx;
-    }
-    if (found) {
+    int idx = getFirstSelectedSimulationCaseRow();
+    if (idx > -1) {
         auto caseName = ui->tableWidgetCases->item(idx, caseNameColumnIdx)->text();
         setupSimulationByHistory(simulationCases[caseName]);
         updateParameterControlsFromSimulation(simulation);
@@ -813,4 +823,13 @@ void MainWindow::on_pushButtonRevertChanges_clicked()
 {
     updateParameterControlsFromSimulation(simulation);
     unmarkParameterControls();
+}
+
+void MainWindow::on_tableWidgetCases_itemSelectionChanged()
+{
+    int idx = getFirstSelectedSimulationCaseRow();
+    if (idx > -1) {
+        auto caseName = ui->tableWidgetCases->item(idx, caseNameColumnIdx)->text();
+        updateParameterControlsFromSimulation(simulationCases[caseName].simulation);
+    }
 }
