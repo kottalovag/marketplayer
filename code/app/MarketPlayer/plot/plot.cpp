@@ -6,9 +6,9 @@ Plot::Plot(QCustomPlot* plot)
 {
 }
 
-void Plot::reset()
+void Plot::clearData()
 {
     if (plot) {
-        cleanPlotData(plot);
+        clearPlotData(plot);
     }
 }

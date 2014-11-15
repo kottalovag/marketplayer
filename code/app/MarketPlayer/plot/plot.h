@@ -9,7 +9,7 @@ protected:
     QCustomPlot* plot;
 public:
     Plot(QCustomPlot* plot);
-    void reset();
+    void clearData();
 };
 
 #endif // PLOT_H

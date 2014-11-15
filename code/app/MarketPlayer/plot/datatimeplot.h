@@ -14,7 +14,7 @@ protected:
 public:
     DataTimePlot(QCustomPlot* plot, QLabel *label, QString yLabel, QString labelPrefix);
     void plotData(DataTimePair const& dataTime, int currentIdx);
-    void reset();
+    void clearData();
 };
 
 #endif // DATATIMEPLOT_H

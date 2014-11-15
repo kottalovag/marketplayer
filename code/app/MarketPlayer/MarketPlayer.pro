@@ -29,7 +29,8 @@ SOURCES += main.cpp\
     colormanager.cpp \
     casenamemanager.cpp \
     model/strategy.cpp \
-    strategymapper.cpp
+    strategymapper.cpp \
+    plot/plottablebundle.cpp
 
 HEADERS  += mainwindow.h \
     model/model.h \
@@ -44,6 +45,7 @@ HEADERS  += mainwindow.h \
     colormanager.h \
     casenamemanager.h \
     model/strategy.h \
-    strategymapper.h
+    strategymapper.h \
+    plot/plottablebundle.h
 
 FORMS    += mainwindow.ui

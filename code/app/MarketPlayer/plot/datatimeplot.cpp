@@ -25,21 +25,24 @@ DataTimePlot::DataTimePlot(QCustomPlot* plot, QLabel *label, QString yLabel, QSt
 
 void DataTimePlot::plotData(const DataTimePair &dataTime, int currentIdx)
 {
+    //data
+    plot->graph(0)->setData(dataTime.data.x, dataTime.data.y);
+
+    //current point
+    plot->graph(1)->clearData();
+    plot->graph(1)->addData(currentIdx, dataTime[currentIdx]);
+
     plot->xAxis->setRange(0.0, dataTime.data.x.last() + 1);
     plot->yAxis->setRange(0.0, dataTime.max * 1.1);
 
-    plot->graph(0)->setData(dataTime.data.x, dataTime.data.y);
-
-    plot->graph(1)->clearData();
-    plot->graph(1)->addData(currentIdx, dataTime[currentIdx]);
     plot->replot();
 
     label->setText(labelPrefix + " :" + QString::number(dataTime[currentIdx]));
 }
 
-void DataTimePlot::reset()
+void DataTimePlot::clearData()
 {
-    Plot::reset();
+    Plot::clearData();
     if (label) {
         label->setText(labelPrefix + ": 0");
     }

@@ -3,6 +3,6 @@
 
 class QCustomPlot;
 
-void cleanPlotData(QCustomPlot* plot);
+void clearPlotData(QCustomPlot* plot);
 
 #endif // PLOTUTILS_H

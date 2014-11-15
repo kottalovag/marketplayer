@@ -17,9 +17,9 @@ void DistributionPlot::plotData(const HeavyDistribution &distribution)
     auto bars = static_cast<QCPBars*>(plot->plottable(0));
     bars->setWidth(distribution.resolution);
     bars->setData(data.x, data.y);
+
     plot->xAxis->setRange(0.0, data.x.last() + distribution.resolution);
     plot->yAxis->setRange(0.0, distribution.maxNum * 1.1);
-    plot->xAxis->setTickStep(distribution.resolution);
 
     plot->replot();
 }

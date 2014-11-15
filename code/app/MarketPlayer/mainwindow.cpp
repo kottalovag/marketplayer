@@ -166,18 +166,19 @@ void MainWindow::applyUIToApplicationStarted()
     ui->sliderTime->setMinimum(0);
     ui->sliderTime->setMaximum(0);
 
-    plotQ1Traded->reset();
-    plotQ2Traded->reset();
-    plotSumUtility->reset();
-    plotWealthDeviation->reset();
-    plotNumSuccessfulTrades->reset();
+    //todo plot sync
+    plotQ1Traded->clearData();
+    plotQ2Traded->clearData();
+    plotSumUtility->clearData();
+    plotWealthDeviation->clearData();
+    plotNumSuccessfulTrades->clearData();
 
-    plotQ1Distribution->reset();
-    plotQ2Distribution->reset();
-    plotUtilityDistribution->reset();
-    plotWealthDistribution->reset();
+    plotQ1Distribution->clearData();
+    plotQ2Distribution->clearData();
+    plotUtilityDistribution->clearData();
+    plotWealthDistribution->clearData();
 
-    cleanPlotData(ui->plotEdgeworthBox);
+    clearPlotData(ui->plotEdgeworthBox);
 
     ui->actionSaveEdgeworthDiagram->setEnabled(false);
 
@@ -196,7 +197,7 @@ void MainWindow::applyUIToSimulationSetup()
     ui->progressBarRound->setMaximum(simulation.progress.getNum());
 
     plotNextSituation();
-    updateOverview();
+    updateOverview(); //todo plot sync
     updateProgress();
     updateTimeRange();
 
@@ -269,7 +270,7 @@ void MainWindow::setupEdgeworthBox()
 }
 
 void MainWindow::plotEdgeworth(QCustomPlot* plot, EdgeworthSituation const& situation) {
-    cleanPlotData(plot);
+    clearPlotData(plot);
 
     Amount_t const q1RangeStart = std::numeric_limits<Amount_t>::epsilon();
     Amount_t const q1Resolution = situation.q1Sum / 4000; //todo generalize
@@ -281,14 +282,6 @@ void MainWindow::plotEdgeworth(QCustomPlot* plot, EdgeworthSituation const& situ
     ResourceDataPair data1 = sampleFunction(
                 situation.getCurve1Function(), q1RangeStart, situation.q1Sum, q1Resolution);
     curve1Graph->setData(data1.x, data1.y);
-    //ResourceDataPair data1 = sampleFunction(situation.getCurve1Function(), situation.actor1.q1, situation.q1Sum, q1Resolution);
-    /*auto graph1Brush = graph1->brush();
-            graph1Brush.setStyle(Qt::SolidPattern);
-            QColor fillColor = Qt::blue;
-            fillColor.setAlpha(32);
-            graph1Brush.setColor(fillColor);
-            graph1->setBrush(graph1Brush);
-            graph1->setChannelFillGraph(plot->graph(1));*/
 
     auto curve2Graph = plot->graph(1);
     ResourceDataPair data2 = sampleFunction(situation.getCurve2Function(),
@@ -318,11 +311,13 @@ void MainWindow::plotEdgeworth(QCustomPlot* plot, EdgeworthSituation const& situ
 
 void MainWindow::updateOverview()
 {
+    //todo plot sync
     loadHistoryMoment(simulation.history.time - 1);
 }
 
 void MainWindow::loadHistoryMoment(int time)
 {
+    //todo plot sync
     auto const momentIdx = time;
     auto const& history = simulation.history;
 
@@ -346,6 +341,7 @@ void MainWindow::loadHistoryMoment(int time)
 
 void MainWindow::updateTimeRange()
 {
+    //todo plot sync
     size_t currentTimeUnit = simulation.history.time - 1;
     ui->sliderTime->setMaximum(currentTimeUnit);
     ui->sliderTime->setValue(currentTimeUnit);
@@ -624,6 +620,7 @@ void MainWindow::on_sliderSpeed_valueChanged(int)
 
 void MainWindow::on_sliderTime_valueChanged(int value)
 {
+    //todo plot sync
     //todo spare double load
     loadHistoryMoment(value);
 }
