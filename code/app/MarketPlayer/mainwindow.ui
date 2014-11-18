@@ -15,6 +15,63 @@
   </property>
   <widget class="QWidget" name="centralWidget">
    <layout class="QVBoxLayout" name="verticalLayout_7">
+    <property name="spacing">
+     <number>3</number>
+    </property>
+    <item>
+     <widget class="QGroupBox" name="horizontalGroupBox_2">
+      <property name="title">
+       <string>Overview Mode</string>
+      </property>
+      <layout class="QHBoxLayout" name="horizontalLayout_5">
+       <property name="spacing">
+        <number>6</number>
+       </property>
+       <property name="topMargin">
+        <number>0</number>
+       </property>
+       <property name="bottomMargin">
+        <number>0</number>
+       </property>
+       <item>
+        <widget class="QRadioButton" name="radioButtonSimulation">
+         <property name="text">
+          <string>Simulation</string>
+         </property>
+         <property name="checked">
+          <bool>true</bool>
+         </property>
+         <attribute name="buttonGroup">
+          <string notr="true">buttonGroupOverviewMode</string>
+         </attribute>
+        </widget>
+       </item>
+       <item>
+        <widget class="QRadioButton" name="radioButtonComparison">
+         <property name="text">
+          <string>Comparison</string>
+         </property>
+         <attribute name="buttonGroup">
+          <string notr="true">buttonGroupOverviewMode</string>
+         </attribute>
+        </widget>
+       </item>
+       <item>
+        <spacer name="horizontalSpacer_2">
+         <property name="orientation">
+          <enum>Qt::Horizontal</enum>
+         </property>
+         <property name="sizeHint" stdset="0">
+          <size>
+           <width>40</width>
+           <height>20</height>
+          </size>
+         </property>
+        </spacer>
+       </item>
+      </layout>
+     </widget>
+    </item>
     <item>
      <widget class="QTabWidget" name="tabWidget">
       <property name="currentIndex">
@@ -43,6 +100,9 @@
               <string>Parameters</string>
              </property>
              <layout class="QVBoxLayout" name="verticalLayoutSetup">
+              <property name="spacing">
+               <number>3</number>
+              </property>
               <item>
                <layout class="QFormLayout" name="formLayout_2">
                 <item row="0" column="0">
@@ -203,6 +263,15 @@
                    <string>Offer strategy</string>
                   </property>
                   <layout class="QVBoxLayout" name="verticalLayout_3">
+                   <property name="spacing">
+                    <number>3</number>
+                   </property>
+                   <property name="topMargin">
+                    <number>0</number>
+                   </property>
+                   <property name="bottomMargin">
+                    <number>0</number>
+                   </property>
                    <item>
                     <widget class="QRadioButton" name="radioButtonOppositePareto">
                      <property name="text">
@@ -248,6 +317,15 @@
                    <string>Acceptance strategy</string>
                   </property>
                   <layout class="QVBoxLayout" name="verticalLayout_9">
+                   <property name="spacing">
+                    <number>3</number>
+                   </property>
+                   <property name="topMargin">
+                    <number>0</number>
+                   </property>
+                   <property name="bottomMargin">
+                    <number>0</number>
+                   </property>
                    <item>
                     <widget class="QRadioButton" name="radioButtonWantAlways">
                      <property name="text">
@@ -325,6 +403,12 @@
             <layout class="QHBoxLayout" name="horizontalLayout_4">
              <item>
               <widget class="QToolButton" name="toolButtonApply">
+               <property name="sizePolicy">
+                <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
+                 <horstretch>0</horstretch>
+                 <verstretch>0</verstretch>
+                </sizepolicy>
+               </property>
                <property name="text">
                 <string>Apply</string>
                </property>
@@ -332,6 +416,12 @@
              </item>
              <item>
               <widget class="QToolButton" name="toolButtonRevertChanges">
+               <property name="sizePolicy">
+                <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
+                 <horstretch>0</horstretch>
+                 <verstretch>0</verstretch>
+                </sizepolicy>
+               </property>
                <property name="text">
                 <string>Revert changes</string>
                </property>
@@ -358,56 +448,14 @@
         <item>
          <layout class="QVBoxLayout" name="verticalLayout_19">
           <item>
-           <widget class="QGroupBox" name="horizontalGroupBox_2">
-            <property name="title">
-             <string>Overview Mode</string>
-            </property>
-            <layout class="QHBoxLayout" name="horizontalLayout_5">
-             <item>
-              <widget class="QRadioButton" name="radioButtonSimulation">
-               <property name="text">
-                <string>Simulation</string>
-               </property>
-               <property name="checked">
-                <bool>true</bool>
-               </property>
-               <attribute name="buttonGroup">
-                <string notr="true">buttonGroupOverviewMode</string>
-               </attribute>
-              </widget>
-             </item>
-             <item>
-              <widget class="QRadioButton" name="radioButtonComparison">
-               <property name="text">
-                <string>Comparison</string>
-               </property>
-               <attribute name="buttonGroup">
-                <string notr="true">buttonGroupOverviewMode</string>
-               </attribute>
-              </widget>
-             </item>
-             <item>
-              <spacer name="horizontalSpacer_2">
-               <property name="orientation">
-                <enum>Qt::Horizontal</enum>
-               </property>
-               <property name="sizeHint" stdset="0">
-                <size>
-                 <width>40</width>
-                 <height>20</height>
-                </size>
-               </property>
-              </spacer>
-             </item>
-            </layout>
-           </widget>
-          </item>
-          <item>
            <widget class="QGroupBox" name="groupBoxHistory">
             <property name="title">
              <string>History</string>
             </property>
             <layout class="QVBoxLayout" name="verticalLayout_18">
+             <property name="spacing">
+              <number>3</number>
+             </property>
              <item>
               <widget class="QTableWidget" name="tableWidgetCases">
                <property name="dragEnabled">
