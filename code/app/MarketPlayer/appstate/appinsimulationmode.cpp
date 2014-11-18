@@ -33,6 +33,7 @@ void AppInSimulationMode::comparisonModeSelected()
         mainWindow->caseManager->setVisibility(MainWindow::mainSimulationID, false);
         mainWindow->setupShownHistoryCases();
         mainWindow->updateTimeRange(mainWindow->caseManager->calculateLastVisibleDataIdx());
+        mainWindow->setSelectedTimeIdx(mainWindow->caseManager->getValidCurrentDataIdx());
 
         mainWindow->setState(mainWindow->appInComparisonMode.get());
     } else {

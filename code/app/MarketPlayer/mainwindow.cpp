@@ -338,16 +338,23 @@ void MainWindow::loadHistoryMoment(int time)
     caseManager->updatePlotsAt(time);
 }
 
-void MainWindow::updateTimeRange(size_t time)
+void MainWindow::updateTimeRange(size_t maxTimeIdx)
 {
-    ui->sliderTime->setMaximum(time);
-    ui->sliderTime->setValue(time);
-    ui->spinBoxTime->setValue(time);
+    ui->sliderTime->setMaximum(maxTimeIdx);
 }
 
 void MainWindow::updateTimeRangeBySimulation()
 {
     updateTimeRange(simulation.history.time - 1);
+    setSelectedTimeIdx(simulation.history.time - 1); //always showing the last moment
+}
+
+void MainWindow::setSelectedTimeIdx(size_t timeIdx)
+{
+    if (timeIdx != ui->sliderTime->value()) {
+        ui->sliderTime->setValue(timeIdx);
+        ui->spinBoxTime->setValue(timeIdx);
+    }
 }
 
 void MainWindow::plotNextSituation()
@@ -627,7 +634,6 @@ void MainWindow::on_actionNextRound_triggered()
     }
     updateTimeRangeBySimulation();
     updateProgress();
-    loadHistoryMoment(simulation.history.time - 1);
 }
 
 void MainWindow::on_actionStart_triggered()

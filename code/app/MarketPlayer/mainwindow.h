@@ -58,8 +58,9 @@ private:
     void updateParameterControlsFromSimulation(Simulation const& simulation);
 
     void loadHistoryMoment(int time);
-    void updateTimeRange(size_t time);
+    void updateTimeRange(size_t maxTimeIdx);
     void updateTimeRangeBySimulation();
+    void setSelectedTimeIdx(size_t timeIdx);
     void updateProgress();
 
     void updateCaseInput();
