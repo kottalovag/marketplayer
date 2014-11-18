@@ -30,7 +30,6 @@ void DataTimePlot::update()
         plot->xAxis->setRange(0.0, xLast + 1);
         plot->yAxis->setRange(0.0, yMax * 1.1);
     }
-
     plot->replot();
 
     if (bundles.size() == 1) {
