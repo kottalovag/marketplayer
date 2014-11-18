@@ -22,7 +22,7 @@ void AppInComparisonMode::enter()
 
 void AppInComparisonMode::simulationSetupOccured()
 {
-    mainWindow->setState(mainWindow->appInSimulationMode.get());
+    simulationModeSelected();
 }
 
 void AppInComparisonMode::simulationModeSelected()
