@@ -14,6 +14,7 @@ TEMPLATE = app
 
 INCLUDEPATH += model
 INCLUDEPATH += plot
+INCLUDEPATH += appstate
 
 SOURCES += main.cpp\
         mainwindow.cpp \
@@ -21,7 +22,7 @@ SOURCES += main.cpp\
     plot/qcustomplot.cpp \
     plot/datatimeplot.cpp \
     plot/plotutils.cpp \
-    plot/datatimeplotwithpercentage.cpp \
+    plot/datatimeratioplot.cpp \
     plot/distributionplot.cpp \
     plot/plot.cpp \
     model/modelutils.cpp \
@@ -30,14 +31,23 @@ SOURCES += main.cpp\
     casenamemanager.cpp \
     model/strategy.cpp \
     strategymapper.cpp \
-    plot/plottablebundle.cpp
+    plot/plottablebundle.cpp \
+    plot/datatimeplottablebundle.cpp \
+    plot/distributionplottablebundle.cpp \
+    plot/bundlehelper.cpp \
+    casemanager.cpp \
+    plot/datatimeratioplottablebundle.cpp \
+    appstate/appstate.cpp \
+    appstate/appwaitingforsimulationloaded.cpp \
+    appstate/appinsimulationmode.cpp \
+    appstate/appincomparisonmode.cpp
 
 HEADERS  += mainwindow.h \
     model/model.h \
     plot/qcustomplot.h \
     plot/datatimeplot.h \
     plot/plotutils.h \
-    plot/datatimeplotwithpercentage.h \
+    plot/datatimeratioplot.h \
     plot/distributionplot.h \
     plot/plot.h \
     model/modelutils.h \
@@ -46,6 +56,16 @@ HEADERS  += mainwindow.h \
     casenamemanager.h \
     model/strategy.h \
     strategymapper.h \
-    plot/plottablebundle.h
+    plot/plottablebundle.h \
+    plot/datatimeplottablebundle.h \
+    plot/distributionplottablebundle.h \
+    plot/bundlehelper.h \
+    casemanager.h \
+    plot/datatimeratioplottablebundle.h \
+    appstate/appstate.h \
+    appstate/appwaitingforsimulationloaded.h \
+    appstate/appinsimulationmode.h \
+    appstate/appincomparisonmode.h \
+    appstate/apphavingsimulationloaded.h
 
 FORMS    += mainwindow.ui

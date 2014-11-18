@@ -12,15 +12,19 @@ struct PlottableBundle
         DynamicColor
     };
 
-    PlottableBundle();
+    PlottableBundle(QCustomPlot* plot);
+    virtual ~PlottableBundle(){}
+    virtual void removeSelf();
+
     void setColor(QColor color);
     void clearData();
     void addPlottable(QCPAbstractPlottable* plottable, ColorStrategy colorStrategy = DynamicColor);
+
 private:
     typedef QPair<QCPAbstractPlottable*, ColorStrategy> PlottableInfo;
-
     void applyColor(PlottableInfo &info);
 
+    QCustomPlot* plot;
     QColor color;
     QList<PlottableInfo> plottables;
 };

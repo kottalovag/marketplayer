@@ -18,7 +18,7 @@
     <item>
      <widget class="QTabWidget" name="tabWidget">
       <property name="currentIndex">
-       <number>2</number>
+       <number>0</number>
       </property>
       <widget class="QWidget" name="tabSetup">
        <attribute name="title">
@@ -324,14 +324,14 @@
            <item>
             <layout class="QHBoxLayout" name="horizontalLayout_4">
              <item>
-              <widget class="QPushButton" name="pushButtonApply">
+              <widget class="QToolButton" name="toolButtonApply">
                <property name="text">
-                <string>Apply and restart</string>
+                <string>Apply</string>
                </property>
               </widget>
              </item>
              <item>
-              <widget class="QPushButton" name="pushButtonRevertChanges">
+              <widget class="QToolButton" name="toolButtonRevertChanges">
                <property name="text">
                 <string>Revert changes</string>
                </property>
@@ -371,6 +371,9 @@
                <property name="checked">
                 <bool>true</bool>
                </property>
+               <attribute name="buttonGroup">
+                <string notr="true">buttonGroupOverviewMode</string>
+               </attribute>
               </widget>
              </item>
              <item>
@@ -378,6 +381,9 @@
                <property name="text">
                 <string>Comparison</string>
                </property>
+               <attribute name="buttonGroup">
+                <string notr="true">buttonGroupOverviewMode</string>
+               </attribute>
               </widget>
              </item>
              <item>
@@ -778,7 +784,7 @@
           </property>
           <layout class="QHBoxLayout" name="horizontalLayout_2">
            <item>
-            <widget class="QPushButton" name="pushButtonNextTrade">
+            <widget class="QToolButton" name="toolButtonNextTrade">
              <property name="text">
               <string>Next Trade</string>
              </property>
@@ -828,21 +834,21 @@
          <item>
           <layout class="QHBoxLayout" name="horizontalLayout_10">
            <item>
-            <widget class="QPushButton" name="pushButtonNextRound">
+            <widget class="QToolButton" name="toolButtonNextRound">
              <property name="text">
               <string>Next Round</string>
              </property>
             </widget>
            </item>
            <item>
-            <widget class="QPushButton" name="pushButtonStart">
+            <widget class="QToolButton" name="toolButtonStart">
              <property name="text">
               <string>Start</string>
              </property>
             </widget>
            </item>
            <item>
-            <widget class="QPushButton" name="pushButtonPause">
+            <widget class="QToolButton" name="toolButtonPause">
              <property name="text">
               <string>Pause</string>
              </property>
@@ -1005,6 +1011,11 @@
     <string>Load Configuration...</string>
    </property>
   </action>
+  <action name="actionRevertChanges">
+   <property name="text">
+    <string>Revert Changes</string>
+   </property>
+  </action>
  </widget>
  <layoutdefault spacing="6" margin="11"/>
  <customwidgets>
@@ -1027,7 +1038,6 @@
   <tabstop>tabWidget</tabstop>
   <tabstop>sliderTime</tabstop>
   <tabstop>spinBoxTime</tabstop>
-  <tabstop>pushButtonNextTrade</tabstop>
  </tabstops>
  <resources/>
  <connections>
@@ -1038,12 +1048,12 @@
    <slot>setValue(int)</slot>
    <hints>
     <hint type="sourcelabel">
-     <x>741</x>
-     <y>459</y>
+     <x>767</x>
+     <y>672</y>
     </hint>
     <hint type="destinationlabel">
-     <x>711</x>
-     <y>459</y>
+     <x>724</x>
+     <y>675</y>
     </hint>
    </hints>
   </connection>
@@ -1054,18 +1064,19 @@
    <slot>setValue(int)</slot>
    <hints>
     <hint type="sourcelabel">
-     <x>655</x>
-     <y>457</y>
+     <x>724</x>
+     <y>675</y>
     </hint>
     <hint type="destinationlabel">
-     <x>759</x>
-     <y>455</y>
+     <x>767</x>
+     <y>672</y>
     </hint>
    </hints>
   </connection>
  </connections>
  <buttongroups>
-  <buttongroup name="buttonGroupOfferStrategy"/>
   <buttongroup name="buttonGroupAcceptanceStrategy"/>
+  <buttongroup name="buttonGroupOfferStrategy"/>
+  <buttongroup name="buttonGroupOverviewMode"/>
  </buttongroups>
 </ui>

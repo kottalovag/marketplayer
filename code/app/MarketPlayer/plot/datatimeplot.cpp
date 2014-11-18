@@ -1,5 +1,9 @@
 #include "datatimeplot.h"
 #include "plotutils.h"
+#include "bundlehelper.h"
+
+using std::unique_ptr;
+using std::map;
 
 DataTimePlot::DataTimePlot(QCustomPlot* plot, QLabel *label, QString yLabel, QString labelPrefix)
     : Plot(plot)
@@ -8,42 +12,48 @@ DataTimePlot::DataTimePlot(QCustomPlot* plot, QLabel *label, QString yLabel, QSt
 {
     plot->xAxis->setLabel("Time");
     plot->yAxis->setLabel(yLabel);
-
-    //data
-    plot->addGraph();
-
-    //current point
-    plot->addGraph();
-    auto currentGraph = plot->graph(1);
-    currentGraph->setLineStyle(QCPGraph::lsNone);
-    currentGraph->setScatterStyle(QCPScatterStyle(QCPScatterStyle::ssCross));
-    auto currentPen = currentGraph->pen();
-    currentPen.setColor(Qt::black);
-    currentPen.setWidth(2);
-    currentGraph->setPen(currentPen);
 }
 
-void DataTimePlot::plotData(const DataTimePair &dataTime, int currentIdx)
+void DataTimePlot::update()
 {
-    //data
-    plot->graph(0)->setData(dataTime.data.x, dataTime.data.y);
+    if (bundles.size() > 0) {
+        typedef std::unique_ptr<DataTimePlottableBundle> BundlePtr;
+        auto const xLast = BundleHelper::bundleMax<DataTimePlottableBundle>(
+                    bundles,
+                    [](BundlePtr const& bundle){ return bundle->getXLast(); }
+        );
+        auto const yMax = BundleHelper::bundleMax<DataTimePlottableBundle>(
+                    bundles,
+                    [](BundlePtr const& bundle){ return bundle->getYMax(); }
+        );
 
-    //current point
-    plot->graph(1)->clearData();
-    plot->graph(1)->addData(currentIdx, dataTime[currentIdx]);
-
-    plot->xAxis->setRange(0.0, dataTime.data.x.last() + 1);
-    plot->yAxis->setRange(0.0, dataTime.max * 1.1);
+        plot->xAxis->setRange(0.0, xLast + 1);
+        plot->yAxis->setRange(0.0, yMax * 1.1);
+    }
 
     plot->replot();
 
-    label->setText(labelPrefix + " :" + QString::number(dataTime[currentIdx]));
+    if (bundles.size() == 1) {
+        label->setText(labelPrefix + " :" + QString::number(bundles.begin()->second->getCurrentValue()));
+    } else {
+        label->setText("");
+    }
 }
 
 void DataTimePlot::clearData()
 {
     Plot::clearData();
     if (label) {
-        label->setText(labelPrefix + ": 0");
+        label->setText("");
     }
+}
+
+DataTimePlottableBundle *DataTimePlot::provideBundle(QString bundleKey)
+{
+    return BundleHelper::provideBundleHelper<DataTimePlottableBundle>(bundleKey, bundles, plot);
+}
+
+void DataTimePlot::dropBundle(QString bundleKey)
+{
+    BundleHelper::dropBundleHelper<DataTimePlottableBundle>(bundleKey, bundles);
 }

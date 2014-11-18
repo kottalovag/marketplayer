@@ -1,25 +1,40 @@
 #include "distributionplot.h"
 #include "plotutils.h"
+#include "bundlehelper.h"
 
 DistributionPlot::DistributionPlot(QCustomPlot* plot, QString xLabel, QString yLabel)
     : Plot(plot)
 {
-    auto bars = new QCPBars(plot->xAxis, plot->yAxis);
-    plot->addPlottable(bars);
     plot->xAxis->setLabel(xLabel);
     plot->yAxis->setLabel(yLabel);
 }
 
-void DistributionPlot::plotData(const HeavyDistribution &distribution)
+void DistributionPlot::update()
 {
-    auto const& data = distribution.data;
+    if (bundles.size() > 0) {
+        typedef std::unique_ptr<DistributionPlottableBundle> BundlePtr;
+        auto const xLast = BundleHelper::bundleMax<DistributionPlottableBundle>(
+                    bundles,
+                    [](BundlePtr const& bundle){ return bundle->getXLast(); }
+        );
+        auto const maxNum = BundleHelper::bundleMax<DistributionPlottableBundle>(
+                    bundles,
+                    [](BundlePtr const& bundle){ return bundle->getMaxNum(); }
+        );
 
-    auto bars = static_cast<QCPBars*>(plot->plottable(0));
-    bars->setWidth(distribution.resolution);
-    bars->setData(data.x, data.y);
-
-    plot->xAxis->setRange(0.0, data.x.last() + distribution.resolution);
-    plot->yAxis->setRange(0.0, distribution.maxNum * 1.1);
+        plot->xAxis->setRange(0.0, xLast * 1.1);
+        plot->yAxis->setRange(0.0, maxNum * 1.1);
+    }
 
     plot->replot();
+}
+
+DistributionPlottableBundle *DistributionPlot::provideBundle(QString bundleKey)
+{
+    return BundleHelper::provideBundleHelper<DistributionPlottableBundle>(bundleKey, bundles, plot);
+}
+
+void DistributionPlot::dropBundle(QString bundleKey)
+{
+    BundleHelper::dropBundleHelper<DistributionPlottableBundle>(bundleKey, bundles);
 }

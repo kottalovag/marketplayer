@@ -16,6 +16,9 @@ using std::endl;
 
 std::function<void(Position const&)> debugShowPoint;
 
+//Ugly, yes. I know. Anyway, the user will have to type in characters, so why not? :)
+const QString MainWindow::mainSimulationID = "";
+
 MainWindow::MainWindow(QWidget *parent) :
     QMainWindow(parent),
     ui(new Ui::MainWindow)
@@ -23,7 +26,25 @@ MainWindow::MainWindow(QWidget *parent) :
     globalUrng.seed(time(0));
     ui->setupUi(this);
 
-    setupControlsStartup();
+    appWaitingForSimulationLoaded.reset(new AppWaitingForSimulationLoaded(this));
+    appInSimulationMode.reset(new AppInSimulationMode(this));
+    appInComparisonMode.reset(new AppInComparisonMode(this));
+
+    setupControlsAndUIStartup();
+
+    caseManager.reset(new CaseManager(
+                          plotQ1Traded.get(),
+                          plotQ2Traded.get(),
+                          plotSumUtility.get(),
+                          plotNumSuccessfulTrades.get(),
+                          plotWealthDeviation.get(),
+                          plotQ1Distribution.get(),
+                          plotQ2Distribution.get(),
+                          plotUtilityDistribution.get(),
+                          plotWealthDistribution.get()
+                          )
+                      );
+    caseManager->addExternalCase(mainSimulationID, simulation, Qt::blue, true);
 
     strategyMap[oppositeParetoValue] = ui->radioButtonOppositePareto;
     strategyMap[randomParetoValue] = ui->radioButtonRandomPareto;
@@ -39,6 +60,8 @@ MainWindow::MainWindow(QWidget *parent) :
         auto debugGraph = ui->plotEdgeworthBox->graph(5);
         debugGraph->addData(p.q1, p.q2);
     };
+
+    setState(appWaitingForSimulationLoaded.get());
 }
 
 MainWindow::~MainWindow()
@@ -57,7 +80,13 @@ void MainWindow::setupSpeedControls()
     ui->sliderSpeed->setValue(2);
 }
 
-void MainWindow::setupControlsStartup()
+void MainWindow::setState(AppState *nextState)
+{
+    currentState = nextState;
+    currentState->enter();
+}
+
+void MainWindow::setupControlsAndUIStartup()
 {
     ui->lineEditNumActors->setText("1000");
     ui->lineEditNumActors->setValidator(new QIntValidator(2,2000000000, this));
@@ -86,16 +115,15 @@ void MainWindow::setupControlsStartup()
     connect(ui->sliderTime, SIGNAL(rangeChanged(int,int)),
             this, SLOT(onSliderTimeRangeChanged(int,int)));
 
-    connect(ui->pushButtonApply, SIGNAL(clicked()),
-            ui->actionApply, SLOT(trigger()));
-    connect(ui->pushButtonNextRound, SIGNAL(clicked()),
-            ui->actionNextRound, SLOT(trigger()));
-    connect(ui->pushButtonStart, SIGNAL(clicked()),
-            ui->actionStart, SLOT(trigger()));
-    connect(ui->pushButtonPause, SIGNAL(clicked()),
-            ui->actionPause, SLOT(trigger()));
-    connect(ui->pushButtonNextTrade, SIGNAL(clicked()),
-            ui->actionNextTrade, SLOT(trigger()));
+    connect(ui->buttonGroupOverviewMode, SIGNAL(buttonClicked(int)),
+            this, SLOT(onButtonGroupOverviewMode_buttonClicked(int)));
+
+    ui->toolButtonApply->setDefaultAction(ui->actionApply);
+    ui->toolButtonRevertChanges->setDefaultAction(ui->actionRevertChanges);
+    ui->toolButtonNextRound->setDefaultAction(ui->actionNextRound);
+    ui->toolButtonStart->setDefaultAction(ui->actionStart);
+    ui->toolButtonPause->setDefaultAction(ui->actionPause);
+    ui->toolButtonNextTrade->setDefaultAction(ui->actionNextTrade);
 
     ui->sliderTime->setValue(0);
 
@@ -103,13 +131,13 @@ void MainWindow::setupControlsStartup()
 
     setupEdgeworthBox();
 
-    plotQ1Traded.reset(new DataTimePlotWithPercentage(
+    plotQ1Traded.reset(new DataTimeRatioPlot(
         ui->plotQ1Traded, ui->labelQ1Traded, "Q1 traded", "Q1 traded"));
-    plotQ2Traded.reset(new DataTimePlotWithPercentage(
+    plotQ2Traded.reset(new DataTimeRatioPlot(
         ui->plotQ2Traded, ui->labelQ2Traded, "Q2 traded", "Q2 traded"));
     plotSumUtility.reset(new DataTimePlot(
         ui->plotSumUtility, ui->labelSumUtilities, "Sum of utilities", "Sum of utilities"));
-    plotNumSuccessfulTrades.reset(new DataTimePlotWithPercentage(
+    plotNumSuccessfulTrades.reset(new DataTimeRatioPlot(
         ui->plotNumSuccessfulTrades, ui->labelNumSuccessful, "Successful trades", "Successful trades"));
     plotWealthDeviation.reset(new DataTimePlot(
         ui->plotWealthDeviation, ui->labelWealthDeviation, "Wealth deviation", "Wealth deviation"));
@@ -183,13 +211,9 @@ void MainWindow::applyUIToApplicationStarted()
     ui->actionSaveEdgeworthDiagram->setEnabled(false);
 
     ui->actionNextRound->setEnabled(false);
-    ui->pushButtonNextRound->setEnabled(false);
     ui->actionStart->setEnabled(false);
-    ui->pushButtonStart->setEnabled(false);
     ui->actionPause->setEnabled(false);
-    ui->pushButtonPause->setEnabled(false);
     ui->actionNextTrade->setEnabled(false);
-    ui->pushButtonNextTrade->setEnabled(false);
 }
 
 void MainWindow::applyUIToSimulationSetup()
@@ -197,9 +221,9 @@ void MainWindow::applyUIToSimulationSetup()
     ui->progressBarRound->setMaximum(simulation.progress.getNum());
 
     plotNextSituation();
-    updateOverview(); //todo plot sync
+    loadHistoryMoment(simulation.history.time - 1);
     updateProgress();
-    updateTimeRange();
+    updateTimeRangeBySimulation();
 
     changeToTab(ui->tabWidget, ui->tabMainOverview);
     ui->groupBoxHistory->setEnabled(true);
@@ -309,43 +333,21 @@ void MainWindow::plotEdgeworth(QCustomPlot* plot, EdgeworthSituation const& situ
     plot->replot();
 }
 
-void MainWindow::updateOverview()
-{
-    //todo plot sync
-    loadHistoryMoment(simulation.history.time - 1);
-}
-
 void MainWindow::loadHistoryMoment(int time)
 {
-    //todo plot sync
-    auto const momentIdx = time;
-    auto const& history = simulation.history;
-
-    Moment const& moment = history.moments[momentIdx];
-    plotQ1Distribution->plotData(moment.q1Distribution);
-    plotQ2Distribution->plotData(moment.q2Distribution);
-    plotUtilityDistribution->plotData(moment.utilityDistribution);
-    plotWealthDistribution->plotData(moment.wealthDistribution);
-
-    plotQ1Traded->plotDataAndPercentage(
-                history.q1Traded, time, simulation.amounts[0]);
-    plotQ2Traded->plotDataAndPercentage(
-                history.q2Traded, time, simulation.amounts[1]);
-    plotSumUtility->plotData(
-                history.sumUtilities, time);
-    plotNumSuccessfulTrades->plotDataAndPercentage(
-                history.numSuccessful, time, simulation.numActors/2);
-    plotWealthDeviation->plotData(
-                history.wealthDeviation, time);
+    caseManager->updatePlotsAt(time);
 }
 
-void MainWindow::updateTimeRange()
+void MainWindow::updateTimeRange(size_t time)
 {
-    //todo plot sync
-    size_t currentTimeUnit = simulation.history.time - 1;
-    ui->sliderTime->setMaximum(currentTimeUnit);
-    ui->sliderTime->setValue(currentTimeUnit);
-    ui->spinBoxTime->setValue(currentTimeUnit);
+    ui->sliderTime->setMaximum(time);
+    ui->sliderTime->setValue(time);
+    ui->spinBoxTime->setValue(time);
+}
+
+void MainWindow::updateTimeRangeBySimulation()
+{
+    updateTimeRange(simulation.history.time - 1);
 }
 
 void MainWindow::plotNextSituation()
@@ -354,7 +356,7 @@ void MainWindow::plotNextSituation()
     plotEdgeworth(ui->plotEdgeworthBox, nextSituation);
 }
 
-bool MainWindow::setupSimulationByForm()
+bool MainWindow::trySetupSimulationByForm()
 {
     bool success = simulation.setup(ui->lineEditSeed->text().toUInt(),
                      ui->lineEditNumActors->text().toInt(),
@@ -387,9 +389,9 @@ bool MainWindow::setupSimulationByForm()
     return success;
 }
 
-void MainWindow::setupSimulationByHistory(const SimulationCase &simulationCase)
+void MainWindow::setupSimulationByHistory(const AbstractSimulationCase &simulationCase)
 {
-    simulation = simulationCase.simulation;
+    simulation = simulationCase.getSimulation();
 }
 
 void MainWindow::updateParameterControlsFromSimulation(const Simulation &simulation)
@@ -427,7 +429,7 @@ void MainWindow::updateCaseInput()
     QString caseName;
     do {
         caseName = caseNameManager.provideNextCaseName();
-    } while (simulationCases.find(caseName) != simulationCases.end());
+    } while (caseManager->contains(caseName));
     ui->lineEditCaseName->setText(caseName);
     setButtonColor(ui->pushButtonCaseColor, colorManager.provideNextColor());
 }
@@ -443,26 +445,64 @@ void MainWindow::setButtonColor(QPushButton *button, QColor color)
     button->setStyleSheet(style.arg(color.red()).arg(color.green()).arg(color.blue()));
 }
 
-void MainWindow::removeCase(QString caseName)
+void MainWindow::addCaseRow(bool visible)
 {
-    //todo plot sync
-    auto foundElement = simulationCases.find(caseName);
-    simulationCases.erase(foundElement);
+    auto caseName = ui->lineEditCaseName->text();
+    if (caseName == "" || caseName == mainSimulationID || caseManager->contains(caseName)) {
+        QMessageBox msgBox;
+        msgBox.setText("You have to enter a non-empty unique name for the case");
+        msgBox.exec();
+    } else {
+        auto const color = getButtonColor(ui->pushButtonCaseColor);
+        caseManager->addHeavyCase(caseName, simulation, color, visible);
+
+        auto const rowIdx = getNumCaseRows();
+        ui->tableWidgetCases->insertRow(rowIdx);
+
+        static auto disableItem = [](QTableWidgetItem* item){
+            item->setFlags(item->flags() & ~Qt::ItemIsEditable);
+        };
+        auto nameItem = new QTableWidgetItem(caseName);
+        disableItem(nameItem);
+        ui->tableWidgetCases->setItem(rowIdx, caseNameColumnIdx, nameItem);
+
+        auto coloredItem = new QTableWidgetItem("");
+        disableItem(coloredItem);
+        coloredItem->setBackgroundColor(color);
+        ui->tableWidgetCases->setItem(rowIdx, caseColorColumnIdx, coloredItem);
+
+        auto checkItem = new QTableWidgetItem("");
+        disableItem(checkItem);
+        checkItem->setCheckState(Qt::Checked); //checked by default
+        ui->tableWidgetCases->setItem(rowIdx, checkBoxColumnIdx, checkItem);
+
+        updateCaseInput();
+        loadHistoryMoment(ui->sliderTime->value());
+    }
 }
 
-void MainWindow::removeSimulationCaseRows(std::function<bool (int)> pred)
+void MainWindow::removeCaseRows(std::function<bool (int)> pred)
 {
-    for (int i = 0; i < ui->tableWidgetCases->rowCount(); ++i) {
+    for (size_t i = 0; i < getNumCaseRows(); ++i) {
         if (pred(i)) {
-            auto caseName = ui->tableWidgetCases->item(i, caseNameColumnIdx)->text();
-            removeCase(caseName);
+            caseManager->removeCase(getCaseNameFromRow(i));
             ui->tableWidgetCases->removeRow(i);
             --i; //repeat this index in the loop
         }
     }
 }
 
-bool MainWindow::isSimulationCaseRowSelected(int rowIdx) const
+size_t MainWindow::getNumCaseRows() const
+{
+    return ui->tableWidgetCases->rowCount();
+}
+
+QString MainWindow::getCaseNameFromRow(size_t rowIdx) const
+{
+    return ui->tableWidgetCases->item(rowIdx, caseNameColumnIdx)->text();
+}
+
+bool MainWindow::isCaseRowSelected(size_t rowIdx) const
 {
     for (int j = 0; j < ui->tableWidgetCases->columnCount(); ++j) {
         if (ui->tableWidgetCases->item(rowIdx, j)->isSelected()) {
@@ -472,18 +512,31 @@ bool MainWindow::isSimulationCaseRowSelected(int rowIdx) const
     return false;
 }
 
+bool MainWindow::isCaseRowChecked(size_t rowIdx) const
+{
+    auto const checkItem = ui->tableWidgetCases->item(rowIdx, checkBoxColumnIdx);
+    return checkItem->checkState() == Qt::Checked;
+}
+
 int MainWindow::getFirstSelectedSimulationCaseRow() const
 {
-    int idx = 0;
+    size_t idx = 0;
     bool found = false;
-    while (!found && idx < ui->tableWidgetCases->rowCount()) {
-        found = isSimulationCaseRowSelected(idx);
+    while (!found && idx < getNumCaseRows()) {
+        found = isCaseRowSelected(idx);
         if (!found) ++idx;
     }
     if (found) {
         return idx;
     } else {
         return -1;
+    }
+}
+
+void MainWindow::setupShownHistoryCases()
+{
+    for (size_t i = 0; i < getNumCaseRows(); ++i) {
+        caseManager->setVisibility(getCaseNameFromRow(i), isCaseRowChecked(i));
     }
 }
 
@@ -525,6 +578,15 @@ void MainWindow::on_buttonGroupAcceptanceStrategy_buttonClicked(int)
     markGroupBoxChanged(ui->groupBoxAcceptanceStrategy, true);
 }
 
+void MainWindow::onButtonGroupOverviewMode_buttonClicked(int)
+{
+    if (ui->radioButtonSimulation->isChecked()) {
+        currentState->simulationModeSelected();
+    } else {
+        currentState->comparisonModeSelected();
+    }
+}
+
 void MainWindow::on_actionSaveEdgeworthDiagram_triggered()
 {
     auto now = QDateTime::currentDateTime();
@@ -540,11 +602,11 @@ void MainWindow::changeToTab(QTabWidget* tabWidget, QWidget* desiredTab)
 
 void MainWindow::on_actionApply_triggered()
 {
-    on_actionPause_triggered();
-
-    bool success = setupSimulationByForm();
+    currentState->beforeSimulationSetup();
+    bool success = trySetupSimulationByForm();
     if (success) {
         applyUIToSimulationSetup();
+        currentState->simulationSetupOccured();
     } else {
         QMessageBox msgBox;
         msgBox.setText("The simulation could not be setup using these parameters!");
@@ -563,9 +625,9 @@ void MainWindow::on_actionNextRound_triggered()
         simulation.performNextRound();
         plotNextSituation();
     }
-    updateTimeRange();
+    updateTimeRangeBySimulation();
     updateProgress();
-    updateOverview();
+    loadHistoryMoment(simulation.history.time - 1);
 }
 
 void MainWindow::on_actionStart_triggered()
@@ -573,14 +635,8 @@ void MainWindow::on_actionStart_triggered()
     timer->start();
 
     ui->actionStart->setEnabled(false);
-    ui->pushButtonStart->setEnabled(false);
-
     ui->actionPause->setEnabled(true);
-    ui->pushButtonPause->setEnabled(true);
-
     ui->actionNextTrade->setEnabled(false);
-    ui->pushButtonNextTrade->setEnabled(false);
-
     ui->actionSaveEdgeworthDiagram->setEnabled(false);
 }
 
@@ -589,17 +645,9 @@ void MainWindow::on_actionPause_triggered()
     timer->stop();
 
     ui->actionNextRound->setEnabled(true);
-    ui->pushButtonNextRound->setEnabled(true);
-
     ui->actionStart->setEnabled(true);
-    ui->pushButtonStart->setEnabled(true);
-
     ui->actionPause->setEnabled(false);
-    ui->pushButtonPause->setEnabled(false);
-
     ui->actionNextTrade->setEnabled(true);
-    ui->pushButtonNextTrade->setEnabled(true);
-
     ui->actionSaveEdgeworthDiagram->setEnabled(true);
 }
 
@@ -608,7 +656,7 @@ void MainWindow::on_actionNextTrade_triggered()
     bool const isFinished = simulation.performNextTrade();
     updateProgress();
     if (isFinished) {
-        updateTimeRange();
+        updateTimeRangeBySimulation();
     }
     plotNextSituation();
 }
@@ -620,8 +668,6 @@ void MainWindow::on_sliderSpeed_valueChanged(int)
 
 void MainWindow::on_sliderTime_valueChanged(int value)
 {
-    //todo plot sync
-    //todo spare double load
     loadHistoryMoment(value);
 }
 
@@ -672,7 +718,8 @@ void MainWindow::on_actionLoadConfiguration_triggered()
 {
     QString fileName = QFileDialog::getOpenFileName(this, "Load configuration", "", "(*ini).");
     if (fileName != "") {
-        on_actionPause_triggered();
+        currentState->beforeSimulationSetup();
+
         QSettings settings(fileName, QSettings::IniFormat);
         settings.beginGroup(simulationGroupKey);
 
@@ -693,6 +740,7 @@ void MainWindow::on_actionLoadConfiguration_triggered()
             simulation.acceptanceStrategy = createAcceptanceStrategy(acceptanceStrategy);
             updateParameterControlsFromSimulation(simulation);
             applyUIToSimulationSetup();
+            currentState->simulationSetupOccured();
         } else {
             QMessageBox msgBox;
             msgBox.setText("The simulation could not be setup using this configuration file!");
@@ -703,7 +751,7 @@ void MainWindow::on_actionLoadConfiguration_triggered()
 
 void MainWindow::on_pushButtonClearHistory_clicked()
 {
-    removeSimulationCaseRows([](int){return true;}); //remove all lines
+    removeCaseRows([](int){return true;}); //remove all lines
     colorManager.reset();
     caseNameManager.reset();
     updateCaseInput();
@@ -711,51 +759,13 @@ void MainWindow::on_pushButtonClearHistory_clicked()
 
 void MainWindow::on_pushButtonAddCurrentOutput_clicked()
 {
-    auto caseName = ui->lineEditCaseName->text();
-    if (caseName == "" || simulationCases.find(caseName) != simulationCases.end()) {
-        QMessageBox msgBox;
-        msgBox.setText("You have to enter a non-empty unique name for the case");
-        msgBox.exec();
-    } else {
-        auto& simulationCase = simulationCases[caseName];
-        simulationCase.simulation = simulation;
-        simulationCase.color = getButtonColor(ui->pushButtonCaseColor);
-        simulationCase.isShown = true;
-
-        auto const rowIdx = ui->tableWidgetCases->rowCount();
-        ui->tableWidgetCases->insertRow(rowIdx);
-
-        static auto disableItem = [](QTableWidgetItem* item){
-            item->setFlags(item->flags() & ~Qt::ItemIsEditable);
-        };
-        auto nameItem = new QTableWidgetItem(caseName);
-        disableItem(nameItem);
-        ui->tableWidgetCases->setItem(rowIdx, caseNameColumnIdx, nameItem);
-
-        auto coloredItem = new QTableWidgetItem("");
-        disableItem(coloredItem);
-        coloredItem->setBackgroundColor(simulationCase.color);
-        ui->tableWidgetCases->setItem(rowIdx, caseColorColumnIdx, coloredItem);
-
-        auto checkItem = new QTableWidgetItem("");
-        disableItem(checkItem);
-        checkItem->setCheckState(simulationCase.isShown ? Qt::Checked : Qt::Unchecked);
-        ui->tableWidgetCases->setItem(rowIdx, checkBoxColumnIdx, checkItem);
-
-        updateCaseInput();
-
-        //todo plot sync
-    }
+    currentState->handleCaseAddition();
 }
 
 void MainWindow::on_tableWidgetCases_cellChanged(int row, int column)
 {
     if (column == checkBoxColumnIdx) {
-        auto const caseName = ui->tableWidgetCases->item(row, caseNameColumnIdx)->text();
-        auto const checkItem = ui->tableWidgetCases->item(row, column);
-        auto const isChecked = checkItem->checkState() == Qt::Checked;
-        simulationCases[caseName].isShown = isChecked;
-        //todo plot sync
+        currentState->handleCaseRowVisibility(row);
     }
 }
 
@@ -769,8 +779,8 @@ void MainWindow::on_pushButtonCaseColor_clicked()
 
 void MainWindow::on_pushButtonDeleteSelectedOutput_clicked()
 {
-    removeSimulationCaseRows(
-                [this](int idx) { return isSimulationCaseRowSelected(idx); }
+    removeCaseRows(
+                [this](int idx) { return isCaseRowSelected(idx); }
     );
 }
 
@@ -778,55 +788,56 @@ void MainWindow::on_pushButtonLoadSelectedOutput_clicked()
 {
     int idx = getFirstSelectedSimulationCaseRow();
     if (idx > -1) {
-        auto caseName = ui->tableWidgetCases->item(idx, caseNameColumnIdx)->text();
-        setupSimulationByHistory(simulationCases[caseName]);
+        currentState->beforeSimulationSetup();
+        setupSimulationByHistory(caseManager->getSimulationCase(getCaseNameFromRow(idx)));
         updateParameterControlsFromSimulation(simulation);
         applyUIToSimulationSetup();
+        currentState->simulationSetupOccured();
     }
 }
 
 //todo: mark only if really different from model
-void MainWindow::on_lineEditNumActors_textChanged(const QString &arg1)
+void MainWindow::on_lineEditNumActors_textChanged(const QString& )
 {
     markLineEditChanged(ui->lineEditNumActors, true);
 }
 
-void MainWindow::on_lineEditSumQ1_textChanged(const QString &arg1)
+void MainWindow::on_lineEditSumQ1_textChanged(const QString&)
 {
     markLineEditChanged(ui->lineEditSumQ1, true);
 }
 
-void MainWindow::on_lineEditSumQ2_textChanged(const QString &arg1)
+void MainWindow::on_lineEditSumQ2_textChanged(const QString&)
 {
     markLineEditChanged(ui->lineEditSumQ2, true);
 }
 
-void MainWindow::on_lineEditAlfa1_textChanged(const QString &arg1)
+void MainWindow::on_lineEditAlfa1_textChanged(const QString&)
 {
     markLineEditChanged(ui->lineEditAlfa1, true);
 }
 
-void MainWindow::on_lineEditAlfa2_textChanged(const QString &arg1)
+void MainWindow::on_lineEditAlfa2_textChanged(const QString&)
 {
     markLineEditChanged(ui->lineEditAlfa2, true);
 }
 
-void MainWindow::on_lineEditSeed_textChanged(const QString &arg1)
+void MainWindow::on_lineEditSeed_textChanged(const QString&)
 {
     markLineEditChanged(ui->lineEditSeed, true);
-}
-
-void MainWindow::on_pushButtonRevertChanges_clicked()
-{
-    updateParameterControlsFromSimulation(simulation);
-    unmarkParameterControls();
 }
 
 void MainWindow::on_tableWidgetCases_itemSelectionChanged()
 {
     int idx = getFirstSelectedSimulationCaseRow();
     if (idx > -1) {
-        auto caseName = ui->tableWidgetCases->item(idx, caseNameColumnIdx)->text();
-        updateParameterControlsFromSimulation(simulationCases[caseName].simulation);
+        auto const& simulationCase = caseManager->getSimulationCase(getCaseNameFromRow(idx));
+        updateParameterControlsFromSimulation(simulationCase.getSimulation());
     }
+}
+
+void MainWindow::on_actionRevertChanges_triggered()
+{
+    updateParameterControlsFromSimulation(simulation);
+    unmarkParameterControls();
 }

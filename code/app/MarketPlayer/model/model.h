@@ -54,6 +54,7 @@ struct History
     DataTimePair q1Traded, q2Traded, numSuccessful, sumUtilities, wealthDeviation;
     Moment& newMoment();
     void reset();
+    size_t size() const;
 };
 
 struct AbstractOfferStrategy;
@@ -123,6 +124,10 @@ struct Simulation
     Simulation(){}
     Simulation(Simulation const& o) { *this = o; }
     Simulation& operator=(Simulation const& o);
+
+    Amount_t getSumQ1() const { return amounts[0]; }
+    Amount_t getSumQ2() const { return amounts[1]; }
+    size_t getNumMaxTrade() const { return numActors/2; }
 
     void setupResources(vector<Amount_t>& targetResources, Amount_t const sumAmount, size_t const numActors);
     bool setup(URNG::result_type seed, size_t numActors, unsigned amountQ1, unsigned amountQ2, double alfa1, double alfa2);

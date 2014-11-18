@@ -1,8 +1,9 @@
 #include "plottablebundle.h"
 #include "plotutils.h"
 
-PlottableBundle::PlottableBundle()
-    :color(QColor("blue"))
+PlottableBundle::PlottableBundle(QCustomPlot *plot)
+    : plot(plot)
+    , color(QColor("blue"))
 {
 }
 
@@ -26,6 +27,17 @@ void PlottableBundle::addPlottable(QCPAbstractPlottable *plottable, ColorStrateg
     PlottableInfo info{plottable, colorStrategy};
     plottables.append(info);
     applyColor(info);
+}
+
+//This must not be called after destruction of plot
+//so it may not go into the destructor. (Lifetime could be changed)
+//However we need this functionality to be able
+//to remove bundles manually
+void PlottableBundle::removeSelf()
+{
+    for (auto plottableInfo : plottables) {
+        plot->removePlottable(plottableInfo.first);
+    }
 }
 
 void PlottableBundle::applyColor(PlottableInfo& info)

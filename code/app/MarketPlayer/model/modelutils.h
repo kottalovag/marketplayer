@@ -41,13 +41,14 @@ struct DataPair
 {
     typedef typename vector<T>::size_type size_type;
     vector<T> x,y;
-    size_type size() const { return x.size(); }
 
+    size_type size() const {
+        return x.size();
+    }
     void push(T const& x, T const& y) {
         this->x.push_back(x);
         this->y.push_back(y);
     }
-
     void resize(size_type size) {
         x.resize(size);
         y.resize(size);
@@ -63,7 +64,13 @@ struct DataTimePair
 {
     DataPair<Amount_t> data;
     Amount_t max;
-    Amount_t getLastX() const { return data.x.size() - 1; }
+
+    DataPair<Amount_t>::size_type size() const {
+        return data.size();
+    }
+    Amount_t getLastX() const {
+        return data.x.size() - 1;
+    }
     void push(Amount_t newData) {
         data.push(getLastX() + 1, newData);
         if (newData > max) {

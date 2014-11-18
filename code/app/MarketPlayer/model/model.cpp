@@ -343,6 +343,11 @@ void History::reset()
     moments.resize(0);
 }
 
+size_t History::size() const
+{
+    return time;
+}
+
 void Simulation::RoundInfo::reset()
 {
     q1Traded = 0;

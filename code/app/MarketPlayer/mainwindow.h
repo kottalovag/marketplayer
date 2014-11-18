@@ -8,11 +8,16 @@
 
 #include "model.h"
 #include "datatimeplot.h"
-#include "datatimeplotwithpercentage.h"
+#include "datatimeratioplot.h"
 #include "distributionplot.h"
 #include "simulationcase.h"
 #include "colormanager.h"
 #include "casenamemanager.h"
+#include "casemanager.h"
+#include "appstate.h"
+#include "appwaitingforsimulationloaded.h"
+#include "appinsimulationmode.h"
+#include "appincomparisonmode.h"
 
 namespace Ui {
 class MainWindow;
@@ -22,6 +27,11 @@ class MainWindow : public QMainWindow
 {
     Q_OBJECT
 
+    friend struct AppState;
+    friend struct AppWaitingForSimulationLoaded;
+    friend struct AppInSimulationMode;
+    friend struct AppInComparisonMode;
+
 public:
     explicit MainWindow(QWidget *parent = 0);
     ~MainWindow();
@@ -30,8 +40,10 @@ public:
     void setupSpeedControls();
 
 private:
+    void setState(AppState* nextState);
+
     int calculateSpeedInterval() const;
-    void setupControlsStartup();
+    void setupControlsAndUIStartup();
     void unmarkParameterControls();
     void applyUIToApplicationStarted();
     void applyUIToSimulationSetup();
@@ -40,23 +52,28 @@ private:
     void plotEdgeworth(QCustomPlot* plot, EdgeworthSituation const& situation);
     void plotNextSituation();
 
-    bool setupSimulationByForm();
-    void setupSimulationByHistory(SimulationCase const& simulationCase);
+    bool trySetupSimulationByForm();
+    void setupSimulationByHistory(AbstractSimulationCase const& simulationCase);
 
     void updateParameterControlsFromSimulation(Simulation const& simulation);
 
-    void updateOverview();
     void loadHistoryMoment(int time);
-    void updateTimeRange();
+    void updateTimeRange(size_t time);
+    void updateTimeRangeBySimulation();
     void updateProgress();
 
     void updateCaseInput();
     QColor getButtonColor(QPushButton* button) const;
     void setButtonColor(QPushButton* button, QColor color);
-    void removeCase(QString caseName);
-    void removeSimulationCaseRows(std::function<bool(int)> pred);
-    bool isSimulationCaseRowSelected(int rowIdx) const;
+
+    void addCaseRow(bool visible);
+    void removeCaseRows(std::function<bool(int)> pred);
+    size_t getNumCaseRows() const;
+    QString getCaseNameFromRow(size_t rowIdx) const;
+    bool isCaseRowSelected(size_t rowIdx) const;
+    bool isCaseRowChecked(size_t rowIdx) const;
     int getFirstSelectedSimulationCaseRow() const;
+    void setupShownHistoryCases();
 
     void markLineEditChanged(QLineEdit* lineEdit, bool marked);
     void markGroupBoxChanged(QGroupBox* groupBox, bool marked);
@@ -65,6 +82,7 @@ private slots:
     void onSliderTimeRangeChanged(int min, int max);
     void on_buttonGroupOfferStrategy_buttonClicked(int buttonID);
     void on_buttonGroupAcceptanceStrategy_buttonClicked(int buttonID);
+    void onButtonGroupOverviewMode_buttonClicked(int buttonID);
 
     void on_actionSaveEdgeworthDiagram_triggered();
 
@@ -112,23 +130,30 @@ private slots:
 
     void on_lineEditSeed_textChanged(const QString &arg1);
 
-    void on_pushButtonRevertChanges_clicked();
-
     void on_tableWidgetCases_itemSelectionChanged();
 
+    void on_actionRevertChanges_triggered();
+
 private:
+    AppState* currentState;
+    unique_ptr<AppWaitingForSimulationLoaded> appWaitingForSimulationLoaded;
+    unique_ptr<AppInSimulationMode> appInSimulationMode;
+    unique_ptr<AppInComparisonMode> appInComparisonMode;
+
+    Mode mode;
+
     //the window handles ownership:
     Ui::MainWindow *ui;
     QTimer* timer;
     //
 
+    unique_ptr<CaseManager> caseManager;
     Simulation simulation;
-    std::map<QString, SimulationCase> simulationCases;
 
-    unique_ptr<DataTimePlotWithPercentage> plotQ1Traded;
-    unique_ptr<DataTimePlotWithPercentage> plotQ2Traded;
+    unique_ptr<DataTimeRatioPlot> plotQ1Traded;
+    unique_ptr<DataTimeRatioPlot> plotQ2Traded;
     unique_ptr<DataTimePlot> plotSumUtility;
-    unique_ptr<DataTimePlotWithPercentage> plotNumSuccessfulTrades;
+    unique_ptr<DataTimeRatioPlot> plotNumSuccessfulTrades;
     unique_ptr<DataTimePlot> plotWealthDeviation;
 
     unique_ptr<DistributionPlot> plotQ1Distribution;
@@ -143,8 +168,11 @@ private:
     static const int caseNameColumnIdx = 0;
     static const int caseColorColumnIdx = 1;
     static const int checkBoxColumnIdx = 2;
+
     static constexpr double defaultAlfa1 = 0.5;
     static constexpr double defaultAlfa2 = 0.5;
+
+    static const QString mainSimulationID;
 };
 
 #endif // MAINWINDOW_H
