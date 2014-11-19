@@ -79,6 +79,9 @@ private:
     void markLineEditChanged(QLineEdit* lineEdit, bool marked);
     void markGroupBoxChanged(QGroupBox* groupBox, bool marked);
 
+    double calculateMinimumTradeAmount();
+    void updateMinimumTradeAmount();
+
 private slots:
     void onSliderTimeRangeChanged(int min, int max);
     void on_buttonGroupOfferStrategy_buttonClicked(int buttonID);
@@ -131,6 +134,10 @@ private slots:
 
     void on_lineEditSeed_textChanged(const QString &arg1);
 
+    void on_lineEditMinimumTradeAmountFactor_textChanged(const QString &arg1);
+
+    void on_lineEditMaximumRoundsWithoutTrade_textChanged(const QString &arg1);
+
     void on_tableWidgetCases_itemSelectionChanged();
 
     void on_actionRevertChanges_triggered();
@@ -172,6 +179,9 @@ private:
 
     static constexpr double defaultAlfa1 = 0.5;
     static constexpr double defaultAlfa2 = 0.5;
+
+    static constexpr double defaultMinTradeFactor = 0.01;
+    static const size_t defaultMaxRoundWithoutTrade = 2;
 
     static const QString mainSimulationID;
 };

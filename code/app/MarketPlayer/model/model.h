@@ -117,6 +117,8 @@ struct Simulation
     vector<Amount_t> amounts;
     RoundInfo roundInfo;
     double q2Price;
+    double minTradeFactor;
+    size_t maxRoundWithoutTrade;
 
     unique_ptr<AbstractOfferStrategy> offerStrategy;
     unique_ptr<AbstractAcceptanceStrategy> acceptanceStrategy;
@@ -130,7 +132,12 @@ struct Simulation
     size_t getNumMaxTrade() const { return numActors/2; }
 
     void setupResources(vector<Amount_t>& targetResources, Amount_t const sumAmount, size_t const numActors);
-    bool setup(URNG::result_type seed, size_t numActors, unsigned amountQ1, unsigned amountQ2, double alfa1, double alfa2);
+    bool setup(
+            URNG::result_type seed,
+            size_t numActors,
+            unsigned amountQ1, unsigned amountQ2,
+            double alfa1, double alfa2,
+            double minTradeFactor, size_t maxRoundWithoutTrade);
     bool performNextTrade();
     void performNextRound();
     const EdgeworthSituation &provideNextSituation();
@@ -139,10 +146,13 @@ struct Simulation
     Amount_t computeWealth(Position position) const;
     vector<Amount_t> computeActors(std::function<Amount_t(ActorConstRef const&)> evaluatorFn) const;
     void saveHistory();
+    Amount_t getMinSumTrade() const;
 
+    static Amount_t calculateMinSumTrade(Amount_t sumQ1, Amount_t sumQ2, size_t numActors, Amount_t minTradeFactor);
 private:
     unique_ptr<EdgeworthSituation> previewedSituation;
     EdgeworthSituation getNextSituation() const;
+    Amount_t minSumTrade;
 };
 
 struct EdgeworthSituation {
@@ -155,6 +165,7 @@ struct EdgeworthSituation {
     EdgeworthSituation(Simulation const& simulation, size_t const actor1Idx, size_t const actor2Idx,
                        AbstractOfferStrategy& offerStrategy, AbstractAcceptanceStrategy &acceptanceStrategy, URNG &rng);
 
+    bool isItSuccessful(bool consideration, Amount_t minimum) const;
     CurveFunction getCurve1Function() const;
     CurveFunction getCurve2Function() const;
     CurveFunction getParetoSetFunction() const;

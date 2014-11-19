@@ -54,8 +54,16 @@ EdgeworthSituation::EdgeworthSituation(const Simulation& simulation, const size_
     , q1Sum(actor1.q1 + actor2.q1)
     , q2Sum(actor1.q2 + actor2.q2)
     , result(offerStrategy.propose(*this, rng))
-    , successful(acceptanceStrategy.consider(*this))
+    , successful(isItSuccessful(acceptanceStrategy.consider(*this), simulation.getMinSumTrade()))
 {
+}
+
+bool EdgeworthSituation::isItSuccessful(bool consideration, Amount_t minimum) const
+{
+    Position const p0{actor1.q1, actor1.q2};
+    Position const traded = result - p0;
+    Amount_t const sumTraded = std::abs(traded.q1) + std::abs(traded.q2);
+    return consideration && (sumTraded >= minimum);
 }
 
 CurveFunction EdgeworthSituation::getCurve1Function() const {
@@ -160,6 +168,9 @@ Simulation &Simulation::operator=(const Simulation &o)
     amounts = o.amounts;
     roundInfo = o.roundInfo;
     q2Price = o.q2Price;
+    minTradeFactor = o.minTradeFactor;
+    maxRoundWithoutTrade = o.maxRoundWithoutTrade;
+    minSumTrade = o.minSumTrade;
 
     if (o.offerStrategy.get()) {
         offerStrategy.reset(o.offerStrategy->clone());
@@ -193,7 +204,12 @@ void Simulation::setupResources(vector<Amount_t>& targetResources, const Amount_
     }
 }
 
-bool Simulation::setup(URNG::result_type seed, size_t numActors, unsigned amountQ1, unsigned amountQ2, double alfa1, double alfa2) {
+bool Simulation::setup(
+        URNG::result_type seed,
+        size_t numActors,
+        unsigned amountQ1, unsigned amountQ2,
+        double alfa1, double alfa2,
+        double minTradeFactor, size_t maxRoundWithoutTrade) {
     if (numActors%2 != 0) return false;
     this->seed = seed;
     innerUrng.seed(seed);
@@ -205,6 +221,9 @@ bool Simulation::setup(URNG::result_type seed, size_t numActors, unsigned amount
     this->numActors = numActors;
     utility.alfa1 = alfa1;
     utility.alfa2 = alfa2;
+    this->minTradeFactor = minTradeFactor;
+    this->maxRoundWithoutTrade = maxRoundWithoutTrade;
+    this->minSumTrade = calculateMinSumTrade(amounts[0], amounts[1], numActors, minTradeFactor);
     progress.setup(numActors, innerUrng);
     for (vector<Amount_t>::size_type idx = 0; idx < amounts.size(); ++idx) {
         setupResources(resources[idx], amounts[idx], numActors);
@@ -220,6 +239,11 @@ EdgeworthSituation Simulation::getNextSituation() const
     size_t actor1Idx, actor2Idx;
     std::tie(actor1Idx, actor2Idx) = progress.getCurrentPair();
     return EdgeworthSituation(*this, actor1Idx, actor2Idx, *offerStrategy, *acceptanceStrategy, innerUrng);
+}
+
+Amount_t Simulation::calculateMinSumTrade(Amount_t sumQ1, Amount_t sumQ2, size_t numActors, Amount_t minTradeFactor)
+{
+    return (sumQ1 + sumQ2) / static_cast<Amount_t>(numActors) * minTradeFactor;
 }
 
 EdgeworthSituation const& Simulation::provideNextSituation()
@@ -284,6 +308,11 @@ void Simulation::saveHistory()
     moment.wealthDistribution.setup(wealth, wealthResolution);
 
     history.wealthDeviation.push(moment.wealthDistribution.standardDeviation);
+}
+
+Amount_t Simulation::getMinSumTrade() const
+{
+    return minSumTrade;
 }
 
 bool Simulation::performNextTrade()

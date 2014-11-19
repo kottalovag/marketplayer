@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>787</width>
-    <height>721</height>
+    <width>867</width>
+    <height>732</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -104,156 +104,162 @@
                <number>3</number>
               </property>
               <item>
-               <layout class="QFormLayout" name="formLayout_2">
-                <item row="0" column="0">
-                 <widget class="QLabel" name="label">
-                  <property name="text">
-                   <string>Number of Actors</string>
-                  </property>
-                 </widget>
-                </item>
-                <item row="0" column="1">
-                 <widget class="QLineEdit" name="lineEditNumActors">
+               <layout class="QHBoxLayout" name="horizontalLayout_7">
+                <item>
+                 <widget class="QGroupBox" name="groupBoxResourceSetup">
                   <property name="sizePolicy">
-                   <sizepolicy hsizetype="Minimum" vsizetype="Fixed">
+                   <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
                     <horstretch>0</horstretch>
                     <verstretch>0</verstretch>
                    </sizepolicy>
                   </property>
+                  <property name="title">
+                   <string>Resources</string>
+                  </property>
+                  <layout class="QVBoxLayout" name="verticalLayout_5">
+                   <item>
+                    <layout class="QFormLayout" name="formLayoutResourceSetup">
+                     <item row="1" column="0">
+                      <widget class="QLabel" name="labelQ1">
+                       <property name="text">
+                        <string>Sum of Q1</string>
+                       </property>
+                      </widget>
+                     </item>
+                     <item row="1" column="1">
+                      <widget class="QLineEdit" name="lineEditSumQ1">
+                       <property name="sizePolicy">
+                        <sizepolicy hsizetype="Minimum" vsizetype="Fixed">
+                         <horstretch>0</horstretch>
+                         <verstretch>0</verstretch>
+                        </sizepolicy>
+                       </property>
+                      </widget>
+                     </item>
+                     <item row="2" column="0">
+                      <widget class="QLabel" name="labelQ2">
+                       <property name="text">
+                        <string>Sum of Q2</string>
+                       </property>
+                      </widget>
+                     </item>
+                     <item row="2" column="1">
+                      <widget class="QLineEdit" name="lineEditSumQ2">
+                       <property name="sizePolicy">
+                        <sizepolicy hsizetype="Minimum" vsizetype="Fixed">
+                         <horstretch>0</horstretch>
+                         <verstretch>0</verstretch>
+                        </sizepolicy>
+                       </property>
+                      </widget>
+                     </item>
+                     <item row="0" column="0">
+                      <widget class="QLabel" name="label">
+                       <property name="text">
+                        <string>Actors</string>
+                       </property>
+                      </widget>
+                     </item>
+                     <item row="0" column="1">
+                      <widget class="QLineEdit" name="lineEditNumActors">
+                       <property name="sizePolicy">
+                        <sizepolicy hsizetype="Minimum" vsizetype="Fixed">
+                         <horstretch>0</horstretch>
+                         <verstretch>0</verstretch>
+                        </sizepolicy>
+                       </property>
+                      </widget>
+                     </item>
+                    </layout>
+                   </item>
+                  </layout>
+                 </widget>
+                </item>
+                <item>
+                 <widget class="QGroupBox" name="groupBoxUtilitySetup">
+                  <property name="sizePolicy">
+                   <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
+                    <horstretch>0</horstretch>
+                    <verstretch>0</verstretch>
+                   </sizepolicy>
+                  </property>
+                  <property name="title">
+                   <string>Utility</string>
+                  </property>
+                  <layout class="QVBoxLayout" name="verticalLayout_4">
+                   <item>
+                    <layout class="QFormLayout" name="formLayout">
+                     <property name="fieldGrowthPolicy">
+                      <enum>QFormLayout::AllNonFixedFieldsGrow</enum>
+                     </property>
+                     <item row="0" column="0">
+                      <widget class="QLabel" name="labelAlfa1">
+                       <property name="text">
+                        <string>alfa1</string>
+                       </property>
+                      </widget>
+                     </item>
+                     <item row="1" column="0">
+                      <widget class="QLabel" name="labelAlfa2">
+                       <property name="text">
+                        <string>alfa2</string>
+                       </property>
+                      </widget>
+                     </item>
+                     <item row="1" column="1">
+                      <widget class="QLineEdit" name="lineEditAlfa2">
+                       <property name="enabled">
+                        <bool>true</bool>
+                       </property>
+                       <property name="sizePolicy">
+                        <sizepolicy hsizetype="Minimum" vsizetype="Fixed">
+                         <horstretch>0</horstretch>
+                         <verstretch>0</verstretch>
+                        </sizepolicy>
+                       </property>
+                       <property name="text">
+                        <string/>
+                       </property>
+                      </widget>
+                     </item>
+                     <item row="0" column="1">
+                      <widget class="QLineEdit" name="lineEditAlfa1">
+                       <property name="enabled">
+                        <bool>true</bool>
+                       </property>
+                       <property name="sizePolicy">
+                        <sizepolicy hsizetype="Minimum" vsizetype="Fixed">
+                         <horstretch>0</horstretch>
+                         <verstretch>0</verstretch>
+                        </sizepolicy>
+                       </property>
+                       <property name="text">
+                        <string/>
+                       </property>
+                      </widget>
+                     </item>
+                    </layout>
+                   </item>
+                   <item>
+                    <widget class="QLabel" name="labelUtilityDescription">
+                     <property name="sizePolicy">
+                      <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
+                       <horstretch>0</horstretch>
+                       <verstretch>0</verstretch>
+                      </sizepolicy>
+                     </property>
+                     <property name="text">
+                      <string>utility(Q1,Q2) = (Q1^alfa1)*(Q2^alfa2)</string>
+                     </property>
+                     <property name="wordWrap">
+                      <bool>true</bool>
+                     </property>
+                    </widget>
+                   </item>
+                  </layout>
                  </widget>
                 </item>
                </layout>
-              </item>
-              <item>
-               <widget class="QGroupBox" name="groupBoxResourceSetup">
-                <property name="sizePolicy">
-                 <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
-                  <horstretch>0</horstretch>
-                  <verstretch>0</verstretch>
-                 </sizepolicy>
-                </property>
-                <property name="title">
-                 <string>Resources</string>
-                </property>
-                <layout class="QVBoxLayout" name="verticalLayout_5">
-                 <item>
-                  <layout class="QFormLayout" name="formLayoutResourceSetup">
-                   <item row="0" column="0">
-                    <widget class="QLabel" name="labelQ1">
-                     <property name="text">
-                      <string>Sum of Q1</string>
-                     </property>
-                    </widget>
-                   </item>
-                   <item row="0" column="1">
-                    <widget class="QLineEdit" name="lineEditSumQ1">
-                     <property name="sizePolicy">
-                      <sizepolicy hsizetype="Minimum" vsizetype="Fixed">
-                       <horstretch>0</horstretch>
-                       <verstretch>0</verstretch>
-                      </sizepolicy>
-                     </property>
-                    </widget>
-                   </item>
-                   <item row="1" column="0">
-                    <widget class="QLabel" name="labelQ2">
-                     <property name="text">
-                      <string>Sum of Q2</string>
-                     </property>
-                    </widget>
-                   </item>
-                   <item row="1" column="1">
-                    <widget class="QLineEdit" name="lineEditSumQ2">
-                     <property name="sizePolicy">
-                      <sizepolicy hsizetype="Minimum" vsizetype="Fixed">
-                       <horstretch>0</horstretch>
-                       <verstretch>0</verstretch>
-                      </sizepolicy>
-                     </property>
-                    </widget>
-                   </item>
-                  </layout>
-                 </item>
-                </layout>
-               </widget>
-              </item>
-              <item>
-               <widget class="QGroupBox" name="groupBoxUtilitySetup">
-                <property name="title">
-                 <string>Utility</string>
-                </property>
-                <layout class="QVBoxLayout" name="verticalLayout_4">
-                 <item>
-                  <widget class="QLabel" name="labelUtilityDescription">
-                   <property name="sizePolicy">
-                    <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
-                     <horstretch>0</horstretch>
-                     <verstretch>0</verstretch>
-                    </sizepolicy>
-                   </property>
-                   <property name="text">
-                    <string>utility(Q1,Q2) = Q1^alfa1 * Q2^alfa2</string>
-                   </property>
-                   <property name="wordWrap">
-                    <bool>true</bool>
-                   </property>
-                  </widget>
-                 </item>
-                 <item>
-                  <layout class="QFormLayout" name="formLayout">
-                   <property name="fieldGrowthPolicy">
-                    <enum>QFormLayout::AllNonFixedFieldsGrow</enum>
-                   </property>
-                   <item row="0" column="0">
-                    <widget class="QLabel" name="labelAlfa1">
-                     <property name="text">
-                      <string>alfa1</string>
-                     </property>
-                    </widget>
-                   </item>
-                   <item row="1" column="0">
-                    <widget class="QLabel" name="labelAlfa2">
-                     <property name="text">
-                      <string>alfa2</string>
-                     </property>
-                    </widget>
-                   </item>
-                   <item row="1" column="1">
-                    <widget class="QLineEdit" name="lineEditAlfa2">
-                     <property name="enabled">
-                      <bool>true</bool>
-                     </property>
-                     <property name="sizePolicy">
-                      <sizepolicy hsizetype="Minimum" vsizetype="Fixed">
-                       <horstretch>0</horstretch>
-                       <verstretch>0</verstretch>
-                      </sizepolicy>
-                     </property>
-                     <property name="text">
-                      <string/>
-                     </property>
-                    </widget>
-                   </item>
-                   <item row="0" column="1">
-                    <widget class="QLineEdit" name="lineEditAlfa1">
-                     <property name="enabled">
-                      <bool>true</bool>
-                     </property>
-                     <property name="sizePolicy">
-                      <sizepolicy hsizetype="Minimum" vsizetype="Fixed">
-                       <horstretch>0</horstretch>
-                       <verstretch>0</verstretch>
-                      </sizepolicy>
-                     </property>
-                     <property name="text">
-                      <string/>
-                     </property>
-                    </widget>
-                   </item>
-                  </layout>
-                 </item>
-                </layout>
-               </widget>
               </item>
               <item>
                <layout class="QHBoxLayout" name="horizontalLayoutTradeStrategy">
@@ -267,10 +273,10 @@
                     <number>3</number>
                    </property>
                    <property name="topMargin">
-                    <number>0</number>
+                    <number>3</number>
                    </property>
                    <property name="bottomMargin">
-                    <number>0</number>
+                    <number>3</number>
                    </property>
                    <item>
                     <widget class="QRadioButton" name="radioButtonOppositePareto">
@@ -321,10 +327,10 @@
                     <number>3</number>
                    </property>
                    <property name="topMargin">
-                    <number>0</number>
+                    <number>3</number>
                    </property>
                    <property name="bottomMargin">
-                    <number>0</number>
+                    <number>3</number>
                    </property>
                    <item>
                     <widget class="QRadioButton" name="radioButtonWantAlways">
@@ -363,6 +369,57 @@
                  </widget>
                 </item>
                </layout>
+              </item>
+              <item>
+               <widget class="QGroupBox" name="groupBoxConstraints">
+                <property name="title">
+                 <string>Constraints</string>
+                </property>
+                <layout class="QFormLayout" name="formLayout_5">
+                 <property name="fieldGrowthPolicy">
+                  <enum>QFormLayout::AllNonFixedFieldsGrow</enum>
+                 </property>
+                 <property name="verticalSpacing">
+                  <number>3</number>
+                 </property>
+                 <property name="topMargin">
+                  <number>0</number>
+                 </property>
+                 <property name="bottomMargin">
+                  <number>3</number>
+                 </property>
+                 <item row="0" column="0">
+                  <widget class="QLabel" name="minimumTradeAmountFactorLabel">
+                   <property name="text">
+                    <string>Minimum Trade Factor</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="0" column="1">
+                  <widget class="QLineEdit" name="lineEditMinimumTradeAmountFactor"/>
+                 </item>
+                 <item row="2" column="0">
+                  <widget class="QLabel" name="maximumRoundsWithoutTradeLabel">
+                   <property name="text">
+                    <string>Maximum Rounds Without Trade</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="2" column="1">
+                  <widget class="QLineEdit" name="lineEditMaximumRoundsWithoutTrade"/>
+                 </item>
+                 <item row="1" column="0">
+                  <widget class="QLabel" name="minimumSumTradeLabel">
+                   <property name="text">
+                    <string>(sumQ1+sumQ2)/numActor*Factor)</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="1" column="1">
+                  <widget class="QLineEdit" name="lineEditMinimumSumTrade"/>
+                 </item>
+                </layout>
+               </widget>
               </item>
               <item>
                <widget class="QGroupBox" name="groupBoxRandomSeed">
@@ -404,7 +461,7 @@
              <item>
               <widget class="QToolButton" name="toolButtonApply">
                <property name="sizePolicy">
-                <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
+                <sizepolicy hsizetype="Minimum" vsizetype="Preferred">
                  <horstretch>0</horstretch>
                  <verstretch>0</verstretch>
                 </sizepolicy>
@@ -417,7 +474,7 @@
              <item>
               <widget class="QToolButton" name="toolButtonRevertChanges">
                <property name="sizePolicy">
-                <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
+                <sizepolicy hsizetype="Minimum" vsizetype="Preferred">
                  <horstretch>0</horstretch>
                  <verstretch>0</verstretch>
                 </sizepolicy>
@@ -981,7 +1038,7 @@
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>787</width>
+     <width>867</width>
      <height>21</height>
     </rect>
    </property>
@@ -1075,7 +1132,6 @@
   </customwidget>
  </customwidgets>
  <tabstops>
-  <tabstop>lineEditNumActors</tabstop>
   <tabstop>lineEditSumQ1</tabstop>
   <tabstop>lineEditSumQ2</tabstop>
   <tabstop>lineEditAlfa1</tabstop>
@@ -1096,8 +1152,8 @@
    <slot>setValue(int)</slot>
    <hints>
     <hint type="sourcelabel">
-     <x>767</x>
-     <y>672</y>
+     <x>847</x>
+     <y>685</y>
     </hint>
     <hint type="destinationlabel">
      <x>724</x>
@@ -1116,8 +1172,8 @@
      <y>675</y>
     </hint>
     <hint type="destinationlabel">
-     <x>767</x>
-     <y>672</y>
+     <x>847</x>
+     <y>685</y>
     </hint>
    </hints>
   </connection>

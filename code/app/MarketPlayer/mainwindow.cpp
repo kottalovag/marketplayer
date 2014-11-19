@@ -106,8 +106,18 @@ void MainWindow::setupControlsAndUIStartup()
     ui->lineEditAlfa2->setValidator(alfaValidator);
     ui->lineEditAlfa2->setEnabled(false); //TODO resolve
 
+    auto factorValidator =
+            new QRegExpValidator(QRegExp(R"(^\-?\d*\.?\d*(e\-?\d*)?$)", Qt::CaseInsensitive), this);
+    ui->lineEditMinimumTradeAmountFactor->setText(QString::number(defaultMinTradeFactor));
+    ui->lineEditMinimumTradeAmountFactor->setValidator(factorValidator);
+
+    ui->lineEditMaximumRoundsWithoutTrade->setText(QString::number(defaultMaxRoundWithoutTrade));
+    ui->lineEditMaximumRoundsWithoutTrade->setValidator(new QIntValidator(1,2000000000, this));
+
     ui->lineEditSeed->setValidator(new QIntValidator(0,std::numeric_limits<URNG::result_type>::max(), this));
     on_pushButtonRegenerateSeed_clicked();
+
+    ui->lineEditMinimumSumTrade->setEnabled(false);
 
     ui->radioButtonOppositePareto->setEnabled(true);
     ui->radioButtonWantAlways->setEnabled(true);
@@ -160,7 +170,9 @@ void MainWindow::unmarkParameterControls()
          ui->lineEditSumQ2,
          ui->lineEditAlfa1,
          ui->lineEditAlfa2,
-         ui->lineEditSeed}
+         ui->lineEditSeed,
+         ui->lineEditMinimumTradeAmountFactor,
+         ui->lineEditMaximumRoundsWithoutTrade}
          )
     {
         markLineEditChanged(item, false);
@@ -351,7 +363,7 @@ void MainWindow::updateTimeRangeBySimulation()
 
 void MainWindow::setSelectedTimeIdx(size_t timeIdx)
 {
-    if (timeIdx != ui->sliderTime->value()) {
+    if (static_cast<int>(timeIdx) != ui->sliderTime->value()) {
         ui->sliderTime->setValue(timeIdx);
         ui->spinBoxTime->setValue(timeIdx);
     }
@@ -370,7 +382,9 @@ bool MainWindow::trySetupSimulationByForm()
                      ui->lineEditSumQ1->text().toDouble(),
                      ui->lineEditSumQ2->text().toDouble(),
                      ui->lineEditAlfa1->text().toDouble(),
-                     ui->lineEditAlfa2->text().toDouble());
+                     ui->lineEditAlfa2->text().toDouble(),
+                     ui->lineEditMinimumTradeAmountFactor->text().toDouble(),
+                     ui->lineEditMaximumRoundsWithoutTrade->text().toUInt());
 
     if (success) {
         unique_ptr<AbstractOfferStrategy> offerStrategy;
@@ -409,6 +423,8 @@ void MainWindow::updateParameterControlsFromSimulation(const Simulation &simulat
     ui->lineEditAlfa1->setText(QString::number(simulation.utility.alfa1));
     ui->lineEditAlfa2->setText(QString::number(simulation.utility.alfa2));
     ui->lineEditSeed->setText(QString::number(simulation.seed));
+    ui->lineEditMinimumTradeAmountFactor->setText(QString::number(simulation.minTradeFactor));
+    ui->lineEditMaximumRoundsWithoutTrade->setText(QString::number(simulation.maxRoundWithoutTrade));
 
     OfferStrategyNameVisitor ov;
     if (simulation.offerStrategy.get()) {
@@ -565,6 +581,20 @@ void MainWindow::markGroupBoxChanged(QGroupBox *groupBox, bool marked)
     groupBox->setStyleSheet(style);
 }
 
+double MainWindow::calculateMinimumTradeAmount()
+{
+    double const sumQ1 = ui->lineEditSumQ1->text().toDouble();
+    double const sumQ2 = ui->lineEditSumQ2->text().toDouble();
+    size_t const numActors = ui->lineEditNumActors->text().toUInt();
+    double const minTradeFactor = ui->lineEditMinimumTradeAmountFactor->text().toDouble();
+    return Simulation::calculateMinSumTrade(sumQ1, sumQ2, numActors, minTradeFactor);
+}
+
+void MainWindow::updateMinimumTradeAmount()
+{
+    ui->lineEditMinimumSumTrade->setText(QString::number(calculateMinimumTradeAmount()));
+}
+
 void MainWindow::onSliderTimeRangeChanged(int min, int max)
 {
     if (ui->spinBoxTime->minimum() != min) {
@@ -684,8 +714,9 @@ void MainWindow::on_pushButtonRegenerateSeed_clicked()
 
 QString appGroupKey = "application";
 QString configVersionKey = "config_version";
-QString currentConfigVersion = "1.0";
+QString currentConfigVersion = "1.1";
 
+//since 1.0
 QString simulationGroupKey = "simulation";
 QString q1SumKey = "q1_sum";
 QString q2SumKey = "q2_sum";
@@ -694,6 +725,10 @@ QString randomSeedKey = "random_seed";
 
 QString offerStrategyKey = "offer_strategy";
 QString acceptanceStrategyKey = "acceptance_strategy";
+
+//since 1.1
+QString minTradeFactorKey = "min_trade_factor";
+QString maxRoundWithoutTradeKey = "max_round_without_trade";
 
 void MainWindow::on_actionSaveConfiguration_triggered()
 {
@@ -704,7 +739,7 @@ void MainWindow::on_actionSaveConfiguration_triggered()
         }
         QSettings settings(fileName, QSettings::IniFormat);
         settings.beginGroup(appGroupKey);
-        settings.setValue(configVersionKey, "1.0");
+        settings.setValue(configVersionKey, currentConfigVersion);
         settings.endGroup();
 
         settings.beginGroup(simulationGroupKey);
@@ -712,6 +747,8 @@ void MainWindow::on_actionSaveConfiguration_triggered()
         settings.setValue(q2SumKey, QString::number(simulation.amounts[1]));
         settings.setValue(numActorsKey, QString::number(simulation.numActors));
         settings.setValue(randomSeedKey, QString::number(simulation.seed));
+        settings.setValue(minTradeFactorKey, QString::number(simulation.minTradeFactor));
+        settings.setValue(maxRoundWithoutTradeKey, QString::number(simulation.maxRoundWithoutTrade));
         OfferStrategyNameVisitor ov;
         settings.setValue(offerStrategyKey, ov.getStrategyDescription(*simulation.offerStrategy));
         AcceptanceStrategyNameVisitor av;
@@ -727,6 +764,10 @@ void MainWindow::on_actionLoadConfiguration_triggered()
         currentState->beforeSimulationSetup();
 
         QSettings settings(fileName, QSettings::IniFormat);
+        settings.beginGroup(appGroupKey);
+        QString fileConfigVersion = settings.value(configVersionKey).toString();
+        settings.endGroup();
+
         settings.beginGroup(simulationGroupKey);
 
         unsigned amountQ1 = settings.value(q1SumKey).toUInt();
@@ -736,11 +777,18 @@ void MainWindow::on_actionLoadConfiguration_triggered()
         double alfa1 = defaultAlfa1;
         double alfa2 = defaultAlfa2;
 
+        double minTradeFactor = defaultMinTradeFactor;
+        double maxRoundWithoutTrade = defaultMaxRoundWithoutTrade;
+        if (fileConfigVersion >= "1.1") {
+            minTradeFactor = settings.value(minTradeFactorKey).toDouble();
+            maxRoundWithoutTrade = settings.value(maxRoundWithoutTradeKey).toDouble();
+        }
+
         QString offerStrategy = settings.value(offerStrategyKey).toString();
         QString acceptanceStrategy = settings.value(acceptanceStrategyKey).toString();
         settings.endGroup();
 
-        bool success = simulation.setup(seed, numActors, amountQ1, amountQ2, alfa1, alfa2);
+        bool success = simulation.setup(seed, numActors, amountQ1, amountQ2, alfa1, alfa2, minTradeFactor, maxRoundWithoutTrade);
         if (success) {
             simulation.offerStrategy = createOfferStrategy(offerStrategy);
             simulation.acceptanceStrategy = createAcceptanceStrategy(acceptanceStrategy);
@@ -832,6 +880,18 @@ void MainWindow::on_lineEditSeed_textChanged(const QString&)
 {
     markLineEditChanged(ui->lineEditSeed, true);
 }
+
+void MainWindow::on_lineEditMinimumTradeAmountFactor_textChanged(const QString &)
+{
+    markLineEditChanged(ui->lineEditMinimumTradeAmountFactor, true);
+    updateMinimumTradeAmount();
+}
+
+void MainWindow::on_lineEditMaximumRoundsWithoutTrade_textChanged(const QString &)
+{
+    markLineEditChanged(ui->lineEditMaximumRoundsWithoutTrade, true);
+}
+
 
 void MainWindow::on_tableWidgetCases_itemSelectionChanged()
 {
