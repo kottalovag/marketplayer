@@ -854,16 +854,19 @@ void MainWindow::on_pushButtonLoadSelectedOutput_clicked()
 void MainWindow::on_lineEditNumActors_textChanged(const QString& )
 {
     markLineEditChanged(ui->lineEditNumActors, true);
+    updateMinimumTradeAmount();
 }
 
 void MainWindow::on_lineEditSumQ1_textChanged(const QString&)
 {
     markLineEditChanged(ui->lineEditSumQ1, true);
+    updateMinimumTradeAmount();
 }
 
 void MainWindow::on_lineEditSumQ2_textChanged(const QString&)
 {
     markLineEditChanged(ui->lineEditSumQ2, true);
+    updateMinimumTradeAmount();
 }
 
 void MainWindow::on_lineEditAlfa1_textChanged(const QString&)
