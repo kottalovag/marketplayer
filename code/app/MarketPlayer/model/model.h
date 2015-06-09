@@ -140,6 +140,7 @@ struct Simulation
             double minTradeFactor, size_t maxRoundWithoutTrade);
     bool performNextTrade();
     void performNextRound();
+    bool canContinueSimulation() const;
     const EdgeworthSituation &provideNextSituation();
     Position trade(const EdgeworthSituation &situation, ActorRef& actor1, ActorRef& actor2);
 

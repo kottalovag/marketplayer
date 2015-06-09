@@ -338,7 +338,25 @@ bool Simulation::performNextTrade()
 
 void Simulation::performNextRound()
 {
-    while (!performNextTrade());
+    if (canContinueSimulation()) {
+        while (!performNextTrade());
+    }
+}
+
+bool Simulation::canContinueSimulation() const
+{
+    if (history.size() < maxRoundWithoutTrade) {
+        return true;
+    } else {
+        size_t numZero = 0;
+        size_t const historySize = history.numSuccessful.size();
+        for (size_t numChecked = 0; numChecked < maxRoundWithoutTrade; ++numChecked) {
+            if (history.numSuccessful[historySize-1 - numChecked] == 0) {
+                ++numZero;
+            }
+        }
+        return (numZero < maxRoundWithoutTrade);
+    }
 }
 
 vector<Amount_t> Simulation::computeActors(std::function<Amount_t(ActorConstRef const&)> evaluatorFn) const

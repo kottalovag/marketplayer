@@ -654,16 +654,21 @@ void MainWindow::on_actionApply_triggered()
 void MainWindow::on_actionNextRound_triggered()
 {
     auto tabIdx = ui->tabWidget->currentIndex();
-    if ( ui->tabWidget->indexOf(ui->tabEdgeworthBox) == tabIdx ) {
-        while(!simulation.progress.wasRestarted()) {
-            on_actionNextTrade_triggered();
+    if (simulation.canContinueSimulation()) {
+        if ( ui->tabWidget->indexOf(ui->tabEdgeworthBox) == tabIdx ) {
+            while(!simulation.progress.wasRestarted()) {
+                on_actionNextTrade_triggered();
+            }
+        } else {
+            simulation.performNextRound();
+            plotNextSituation();
         }
-    } else {
-        simulation.performNextRound();
-        plotNextSituation();
+        updateTimeRangeBySimulation();
+        updateProgress();
     }
-    updateTimeRangeBySimulation();
-    updateProgress();
+    if (!simulation.canContinueSimulation()) {
+        on_actionPause_triggered();
+    }
 }
 
 void MainWindow::on_actionStart_triggered()
@@ -689,12 +694,14 @@ void MainWindow::on_actionPause_triggered()
 
 void MainWindow::on_actionNextTrade_triggered()
 {
-    bool const isFinished = simulation.performNextTrade();
-    updateProgress();
-    if (isFinished) {
-        updateTimeRangeBySimulation();
+    if (simulation.canContinueSimulation()) {
+        bool const isFinished = simulation.performNextTrade();
+        updateProgress();
+        if (isFinished) {
+            updateTimeRangeBySimulation();
+        }
+        plotNextSituation();
     }
-    plotNextSituation();
 }
 
 void MainWindow::on_sliderSpeed_valueChanged(int)
