@@ -411,7 +411,7 @@
                  <item row="1" column="0">
                   <widget class="QLabel" name="minimumSumTradeLabel">
                    <property name="text">
-                    <string>(sumQ1+sumQ2)/numActor*Factor)</string>
+                    <string>Min. trade = (sumQ1+sumQ2)/numActor*Factor) =</string>
                    </property>
                   </widget>
                  </item>
