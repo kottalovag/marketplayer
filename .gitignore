@@ -1,0 +1,7 @@
+*.o
+*.pro.user
+moc_*.cpp
+object_script*
+Makefile*
+MarketPlayer.exe
+code/app/MarketPlayer/ui_mainwindow.h
